@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.env*
+*.log
+data/
+.data/
+dist/
+build/
+dist-electron/
+dist-electron-output/
+.DS_Store
+pnpm-lock.yaml
+tsconfig.tsbuildinfo
+.trae/
+.workbuddy/

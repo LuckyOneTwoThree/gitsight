@@ -1,0 +1,317 @@
+import type { ProjectData } from "@/components/projects/project-card";
+
+export interface LandscapeProject extends ProjectData {
+  recentActivity: number; // 近期活跃度分数 0-100
+  communitySize: number; // 社区规模（贡献者数）
+  velocity: number; // 增速斜率
+  techRoute?: string; // 技术路线标签
+}
+
+export interface TrackSummary {
+  id: string;
+  name: string;
+  description: string;
+  techRoutes: {
+    name: string;
+    description: string;
+    representative: string;
+  }[];
+  risingStars: {
+    name: string;
+    owner: string;
+    reason: string;
+  }[];
+  stats: {
+    totalProjects: number;
+    avgStars: number;
+    totalContributors: number;
+    weekGrowth: string;
+  };
+}
+
+export const mockTrackSummary: TrackSummary = {
+  id: "llm-agent",
+  name: "LLM Agent 框架",
+  description:
+    "LLM Agent 框架赛道正处于爆发期，主流技术路线分为 RAG 增强型与 Fine-tune 自主决策型两大阵营。本周 Dify 和 AutoGPT 持续领跑，多个新兴项目在工具调用和记忆管理方面实现突破。",
+  techRoutes: [
+    {
+      name: "RAG 增强型",
+      description: "通过检索增强生成，结合外部知识库提升回答准确性",
+      representative: "LangChain / Dify",
+    },
+    {
+      name: "自主决策型",
+      description: "Agent 自主分解任务、调用工具并执行复杂操作",
+      representative: "AutoGPT / Open Interpreter",
+    },
+    {
+      name: "本地部署型",
+      description: "注重隐私保护，支持在本地环境运行大模型",
+      representative: "Ollama / llama.cpp",
+    },
+  ],
+  risingStars: [
+    {
+      name: "dify",
+      owner: "langgenius",
+      reason: "本周新增 2.8k Stars，Workflow 编排能力获广泛认可",
+    },
+    {
+      name: "open-interpreter",
+      owner: "OpenInterpreter",
+      reason: "自然语言交互模式创新，技术圈热议",
+    },
+  ],
+  stats: {
+    totalProjects: 156,
+    avgStars: 28400,
+    totalContributors: 12800,
+    weekGrowth: "+18.5%",
+  },
+};
+
+export const mockLandscapeProjects: LandscapeProject[] = [
+  {
+    id: "1",
+    name: "AutoGPT",
+    owner: "Significant-Gravitas",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/130738209?v=4",
+    description: "AutoGPT is the vision of accessible AI for everyone",
+    language: "Python",
+    languageColor: "#3572A5",
+    stars: 164000,
+    forks: 43200,
+    starsToday: 567,
+    starsWeek: 3450,
+    lastUpdate: "4小时前",
+    license: "MIT",
+    tags: ["AI Agent", "Autonomous", "GPT-4", "Automation", "Python"],
+    sparklineData: [400, 420, 450, 480, 500, 520, 540, 550, 560, 570, 580, 567],
+    aiSummary: "自主运行的 AI Agent 框架，可自动分解任务、搜索信息并执行复杂操作，探索 AGI 应用边界。",
+    recentActivity: 78,
+    communitySize: 4200,
+    velocity: 85,
+    techRoute: "自主决策型",
+  },
+  {
+    id: "2",
+    name: "langchain",
+    owner: "langchain-ai",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/126733545?v=4",
+    description: "Build context-aware reasoning applications",
+    language: "Python",
+    languageColor: "#3572A5",
+    stars: 89200,
+    forks: 14100,
+    starsToday: 312,
+    starsWeek: 2100,
+    lastUpdate: "1小时前",
+    license: "MIT",
+    tags: ["LLM", "RAG", "Chain", "Memory", "Tools"],
+    sparklineData: [250, 270, 290, 300, 310, 320, 330, 340, 350, 340, 330, 312],
+    aiSummary: "LLM 应用开发框架，提供 Chain、Agent、Memory 等核心抽象，简化构建上下文感知的推理应用。",
+    recentActivity: 92,
+    communitySize: 6800,
+    velocity: 62,
+    techRoute: "RAG 增强型",
+  },
+  {
+    id: "3",
+    name: "ollama",
+    owner: "ollama",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/151674099?v=4",
+    description: "Get up and running with large language models locally",
+    language: "Go",
+    languageColor: "#00ADD8",
+    stars: 78500,
+    forks: 5890,
+    starsToday: 1245,
+    starsWeek: 6780,
+    lastUpdate: "1小时前",
+    license: "MIT",
+    tags: ["LLM", "Local AI", "CLI", "Privacy", "Self-Hosted"],
+    sparklineData: [200, 280, 350, 420, 520, 650, 780, 920, 1050, 1150, 1200, 1245],
+    aiSummary: "本地大模型运行框架，支持一键部署 Llama、Mistral 等主流开源模型，注重隐私保护与易用性。",
+    externalSource: {
+      type: "hackernews",
+      label: "HN 首页",
+    },
+    recentActivity: 95,
+    communitySize: 3200,
+    velocity: 96,
+    techRoute: "本地部署型",
+  },
+  {
+    id: "4",
+    name: "dify",
+    owner: "langgenius",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/127165244?v=4",
+    description: "An open-source LLM app development platform",
+    language: "TypeScript",
+    languageColor: "#3178c6",
+    stars: 38600,
+    forks: 5400,
+    starsToday: 456,
+    starsWeek: 2890,
+    lastUpdate: "3小时前",
+    license: "Apache-2.0",
+    tags: ["LLM", "RAG", "AI Agent", "Workflow", "No-Code"],
+    sparklineData: [80, 95, 110, 140, 180, 210, 250, 290, 340, 380, 420, 456],
+    aiSummary: "开源 LLM 应用开发平台，提供可视化 Workflow、RAG Pipeline 和 Agent 编排能力，支持快速构建 AI 应用。",
+    externalSource: {
+      type: "producthunt",
+      label: "PH 首页",
+    },
+    recentActivity: 88,
+    communitySize: 2800,
+    velocity: 91,
+    techRoute: "RAG 增强型",
+  },
+  {
+    id: "5",
+    name: "open-interpreter",
+    owner: "OpenInterpreter",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/146538738?v=4",
+    description: "A natural language interface for computers",
+    language: "Python",
+    languageColor: "#3572A5",
+    stars: 50200,
+    forks: 4400,
+    starsToday: 356,
+    starsWeek: 2200,
+    lastUpdate: "6小时前",
+    license: "AGPL-3.0",
+    tags: ["AI Agent", "CLI", "Code Execution", "Automation", "Natural Language"],
+    sparklineData: [200, 230, 260, 290, 310, 330, 350, 360, 370, 375, 365, 356],
+    aiSummary: "自然语言计算机接口，让 LLM 在本地执行代码、操作文件和浏览网页，实现与计算机的对话式交互。",
+    externalSource: {
+      type: "twitter",
+      label: "技术圈热议",
+    },
+    recentActivity: 72,
+    communitySize: 1800,
+    velocity: 78,
+    techRoute: "自主决策型",
+  },
+  {
+    id: "6",
+    name: "llama.cpp",
+    owner: "ggerganov",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/1991296?v=4",
+    description: "LLM inference in C/C++",
+    language: "C++",
+    languageColor: "#f34b7d",
+    stars: 61800,
+    forks: 8900,
+    starsToday: 423,
+    starsWeek: 2890,
+    lastUpdate: "2小时前",
+    license: "MIT",
+    tags: ["LLM", "Inference", "C++", "Quantization", "Edge AI"],
+    sparklineData: [300, 330, 360, 380, 400, 420, 440, 450, 460, 470, 450, 423],
+    aiSummary: "高效的 LLM 推理引擎，纯 C/C++ 实现，支持 CPU 运行和多种量化方案，可在消费级硬件上运行大模型。",
+    externalSource: {
+      type: "hackernews",
+      label: "HN 热议",
+    },
+    recentActivity: 85,
+    communitySize: 4100,
+    velocity: 74,
+    techRoute: "本地部署型",
+  },
+  {
+    id: "7",
+    name: "n8n",
+    owner: "n8n-io",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/45487711?v=4",
+    description: "Free and source-available fair-code licensed workflow automation tool",
+    language: "TypeScript",
+    languageColor: "#3178c6",
+    stars: 42500,
+    forks: 6100,
+    starsToday: 189,
+    starsWeek: 1340,
+    lastUpdate: "3小时前",
+    license: "Sustainable Use License",
+    tags: ["Workflow", "Automation", "No-Code", "Integration", "AI Agent"],
+    sparklineData: [120, 130, 140, 145, 155, 160, 170, 175, 180, 185, 190, 189],
+    aiSummary: "开源工作流自动化平台，支持 400+ 集成，近期新增 AI Agent 节点，成为 LLM 应用编排的热门选择。",
+    recentActivity: 68,
+    communitySize: 3500,
+    velocity: 58,
+    techRoute: "RAG 增强型",
+  },
+  {
+    id: "8",
+    name: "MetaGPT",
+    owner: "geekan",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/2707039?v=4",
+    description: "Multi-Agent Framework",
+    language: "Python",
+    languageColor: "#3572A5",
+    stars: 42300,
+    forks: 5200,
+    starsToday: 234,
+    starsWeek: 1670,
+    lastUpdate: "5小时前",
+    license: "MIT",
+    tags: ["AI Agent", "Multi-Agent", "Automation", "Software Dev"],
+    sparklineData: [150, 170, 190, 200, 210, 220, 230, 240, 250, 245, 240, 234],
+    aiSummary: "多智能体协作框架，模拟软件公司组织架构，让多个 AI Agent 协作完成复杂软件开发任务。",
+    recentActivity: 65,
+    communitySize: 1200,
+    velocity: 55,
+    techRoute: "自主决策型",
+  },
+  {
+    id: "9",
+    name: "Flowise",
+    owner: "FlowiseAI",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/128289781?v=4",
+    description: "Drag & drop UI to build your customized LLM flow",
+    language: "JavaScript",
+    languageColor: "#f1e05a",
+    stars: 31200,
+    forks: 16000,
+    starsToday: 156,
+    starsWeek: 1120,
+    lastUpdate: "8小时前",
+    license: "Apache-2.0",
+    tags: ["LLM", "No-Code", "Workflow", "RAG", "Visual"],
+    sparklineData: [100, 110, 120, 125, 130, 135, 140, 145, 150, 155, 158, 156],
+    aiSummary: "可视化 LLM 应用构建平台，拖拽式界面快速搭建 RAG 和 Agent 工作流，降低 AI 应用开发门槛。",
+    recentActivity: 58,
+    communitySize: 2200,
+    velocity: 48,
+    techRoute: "RAG 增强型",
+  },
+  {
+    id: "10",
+    name: "LocalAI",
+    owner: "mudler",
+    ownerAvatar: "https://avatars.githubusercontent.com/u/2420543?v=4",
+    description: "The free, Open Source OpenAI alternative",
+    language: "Go",
+    languageColor: "#00ADD8",
+    stars: 24800,
+    forks: 1800,
+    starsToday: 312,
+    starsWeek: 1890,
+    lastUpdate: "2小时前",
+    license: "MIT",
+    tags: ["LLM", "Local AI", "API", "Self-Hosted", "OpenAI Alternative"],
+    sparklineData: [80, 90, 100, 120, 140, 160, 200, 240, 280, 300, 310, 312],
+    aiSummary: "本地 AI 模型推理 API，兼容 OpenAI API 格式，支持多种后端推理引擎，是隐私优先的 AI 部署方案。",
+    recentActivity: 82,
+    communitySize: 900,
+    velocity: 76,
+    techRoute: "本地部署型",
+  },
+];
+
+export const techRouteColors: Record<string, string> = {
+  "RAG 增强型": "#3b82f6",
+  "自主决策型": "#8b5cf6",
+  "本地部署型": "#10b981",
+};

@@ -1,0 +1,465 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import { useParams } from "next/navigation"
+import { AppSidebar } from "@/components/layout/app-sidebar"
+import { toast } from "sonner"
+import { RepoHeader } from "@/components/repo/repo-header"
+import { AnalysisSidebar } from "@/components/repo/analysis-sidebar"
+import { AnalysisContent } from "@/components/repo/analysis-content"
+// MVP: mock data - replace with API when available
+import { mockAnalysisSections } from "@/lib/mock-repo-data"
+import type { AnalysisSection, RepoDetail } from "@/lib/mock-repo-data"
+import {
+  applyAnalysisStatuses,
+  frontendToBackendSection,
+  toRepoDetail,
+  type ApiAnalysisReport,
+  type ApiRepo,
+  type RepoAnalysisResponse,
+} from "@/lib/repo-api"
+
+interface AnalysisJobResponse {
+  id: string
+  status: "pending" | "running" | "completed" | "failed"
+  error: string | null
+  report?: ApiAnalysisReport | null
+}
+
+interface StartAnalysisResponse {
+  task_id: string
+  report_id: number
+  status: "pending" | "running" | "completed" | "failed"
+  report?: ApiAnalysisReport
+}
+
+export default function RepoDetailPage() {
+  const params = useParams<{ owner: string; name: string }>()
+  const [activeSection, setActiveSection] = useState("tldr")
+  const [isLoading, setIsLoading] = useState(true)
+  const [generatingSectionIds, setGeneratingSectionIds] = useState<Set<string>>(() => new Set())
+  const generatingIdsRef = useRef<Set<string>>(new Set())
+  const [repo, setRepo] = useState<RepoDetail | null>(null)
+  const [sections, setSections] = useState<AnalysisSection[]>([])
+  const [reportsBySection, setReportsBySection] = useState<Record<string, ApiAnalysisReport>>({})
+  const [error, setError] = useState<string | null>(null)
+  const [reportLang, setReportLang] = useState<"zh" | "en">("zh")
+  const [reportMode, setReportMode] = useState<"fast" | "deep">("fast")
+  const [headerCollapsed, setHeaderCollapsed] = useState(false)
+  const [llmConfigured, setLlmConfigured] = useState(true)
+  const hasGeneratingSection = sections.some((section) => section.status === "generating")
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadRepo() {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const owner = decodeURIComponent(params.owner)
+        const name = decodeURIComponent(params.name)
+        const repoResponse = await fetch(`/api/repos/${owner}/${name}`)
+
+        if (!repoResponse.ok) {
+          throw new Error("无法加载这个 GitHub 仓库")
+        }
+
+        const repoPayload = (await repoResponse.json()) as ApiRepo
+        const analysisResponse = await fetch(`/api/repos/${owner}/${name}/analysis?mode=${reportMode}&lang=${reportLang}`)
+        const analysisPayload = analysisResponse.ok
+          ? ((await analysisResponse.json()) as RepoAnalysisResponse)
+          : null
+
+        fetch("/api/desktop/config")
+          .then((r) => r.json())
+          .then((d) => setLlmConfigured(!!d.isConfigured))
+          .catch(() => {})
+
+        if (cancelled) return
+
+        setRepo(toRepoDetail(repoPayload))
+        setSections(
+          analysisPayload
+            ? applyAnalysisStatuses(mockAnalysisSections, analysisPayload.reports)
+            : mockAnalysisSections
+        )
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : "加载失败")
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadRepo()
+
+    return () => {
+      cancelled = true
+    }
+  }, [params.owner, params.name])
+
+  // Re-fetch analysis statuses when mode/language changes (without full page reload)
+  useEffect(() => {
+    if (!repo) return
+    let cancelled = false
+
+    async function reloadAnalysis() {
+      try {
+        const owner = encodeURIComponent(repo!.owner)
+        const name = encodeURIComponent(repo!.name)
+        const response = await fetch(`/api/repos/${owner}/${name}/analysis?mode=${reportMode}&lang=${reportLang}`)
+        if (!response.ok) return
+        const payload = (await response.json()) as RepoAnalysisResponse
+        if (!cancelled) {
+          const ids = generatingIdsRef.current
+          setSections((current) => applyAnalysisStatuses(current, payload.reports, ids))
+        }
+      } catch {
+      }
+    }
+
+    reloadAnalysis()
+
+    return () => {
+      cancelled = true
+    }
+  }, [repo, reportLang, reportMode])
+
+  useEffect(() => {
+    if (!repo || !hasGeneratingSection) return
+
+    let cancelled = false
+    const owner = encodeURIComponent(repo.owner)
+    const name = encodeURIComponent(repo.name)
+
+    async function refreshGeneratingStatuses() {
+      try {
+        const response = await fetch(`/api/repos/${owner}/${name}/analysis?mode=${reportMode}&lang=${reportLang}`)
+        if (!response.ok) return
+        const payload = (await response.json()) as RepoAnalysisResponse
+        if (!cancelled) {
+          setSections((current) => applyAnalysisStatuses(current, payload.reports, generatingIdsRef.current))
+        }
+      } catch {
+      }
+    }
+
+    const timer = window.setInterval(refreshGeneratingStatuses, 2500)
+    refreshGeneratingStatuses()
+
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [repo, reportLang, reportMode, hasGeneratingSection])
+
+  const activeSectionStatus = sections.find((s) => s.id === activeSection)?.status
+
+  useEffect(() => {
+    const backendSection = frontendToBackendSection[activeSection]
+    const reportKey = `${activeSection}:${reportMode}:${reportLang}`
+    const currentRepo = repo
+    if (!currentRepo || !backendSection || activeSectionStatus !== "cached" || reportsBySection[reportKey]) return
+    const resolvedRepo = currentRepo
+
+    let cancelled = false
+
+    async function loadReport() {
+      try {
+        const owner = encodeURIComponent(resolvedRepo.owner)
+        const name = encodeURIComponent(resolvedRepo.name)
+        const response = await fetch(`/api/repos/${owner}/${name}/analysis/${backendSection}?mode=${reportMode}&lang=${reportLang}`)
+        if (!response.ok) return
+
+        const report = (await response.json()) as ApiAnalysisReport
+        if (!cancelled) {
+          setReportsBySection((current) => ({
+            ...current,
+            [reportKey]: report,
+          }))
+        }
+      } catch {
+        // Existing demo cache can still render from local mock content.
+      }
+    }
+
+    loadReport()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeSection, reportLang, reportMode, repo, reportsBySection, activeSectionStatus])
+
+  const pollAnalysisJob = async (taskId: string, signal?: AbortSignal) => {
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      if (signal?.aborted) throw new Error("Analysis task cancelled")
+      const response = await fetch(`/api/analysis/jobs/${encodeURIComponent(taskId)}`, { signal })
+      if (!response.ok) {
+        throw new Error("Analysis task sync failed")
+      }
+
+      const payload = (await response.json()) as AnalysisJobResponse
+      if (payload.status === "completed" && payload.report) {
+        return payload.report
+      }
+      if (payload.status === "failed") {
+        throw new Error(payload.error || "Analysis generation failed")
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, 1800))
+    }
+
+    throw new Error("Analysis task timed out. Please refresh later.")
+  }
+
+  const playCachedReportProgress = async (sectionId: string) => {
+    const steps = [
+      { progress: 18, stage: "正在读取项目分析缓存" },
+      { progress: 36, stage: "正在校验报告版本" },
+      { progress: 58, stage: "正在绑定你的报告记录" },
+      { progress: 78, stage: "正在同步额度与任务状态" },
+      { progress: 94, stage: "正在整理报告展示" },
+    ]
+
+    for (const step of steps) {
+      await new Promise((resolve) => window.setTimeout(resolve, 850))
+      setSections((current) =>
+        current.map((item) =>
+          item.id === sectionId && item.status === "generating"
+            ? { ...item, progress: step.progress, progressStage: step.stage }
+            : item
+        )
+      )
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 650))
+  }
+
+  const handleGenerate = async (section: AnalysisSection) => {
+    const backendSection = frontendToBackendSection[section.id]
+    if (!repo || !backendSection) return
+
+    setGeneratingSectionIds((current) => {
+      const next = new Set(current).add(section.id)
+      generatingIdsRef.current = next
+      return next
+    })
+    setSections((current) =>
+      current.map((item) =>
+        item.id === section.id
+          ? {
+              ...item,
+              status: "generating",
+              progress: 8,
+              progressStage: reportMode === "fast" ? "正在生成快速报告" : "正在生成深度报告",
+            }
+          : item
+      )
+    )
+    setError(null)
+
+    const abortController = new AbortController()
+
+    const progressTimer = window.setInterval(() => {
+      setSections((current) =>
+        current.map((item) =>
+          item.id === section.id && item.status === "generating"
+            ? { ...item, progress: Math.min((item.progress || 8) + 7, 92) }
+            : item
+        )
+      )
+    }, 900)
+
+    try {
+      const owner = encodeURIComponent(repo.owner)
+      const name = encodeURIComponent(repo.name)
+      const response = await fetch(`/api/repos/${owner}/${name}/analysis/${backendSection}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lang: reportLang, mode: reportMode }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          setLlmConfigured(false)
+          toast.error("请先在设置中配置 LLM API Key", {
+            action: { label: "前往设置", onClick: () => window.location.href = "/settings" },
+          })
+          return
+        }
+        if (response.status === 401) {
+          toast.error("请求失败，请检查配置后重试。")
+          return
+        }
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error?.message || "生成报告失败")
+      }
+
+      const started = (await response.json()) as StartAnalysisResponse
+      const generatedReport = started.report?.status === "cached"
+        ? await playCachedReportProgress(section.id).then(() => started.report)
+        : await pollAnalysisJob(started.task_id, abortController.signal)
+
+      if (generatedReport) {
+        setReportsBySection((current) => ({
+          ...current,
+          [`${section.id}:${reportMode}:${reportLang}`]: generatedReport,
+        }))
+      }
+
+      setGeneratingSectionIds((current) => {
+        const next = new Set(current)
+        next.delete(section.id)
+        generatingIdsRef.current = next
+        return next
+      })
+
+      if (generatedReport) {
+        setSections((current) =>
+          current.map((item) =>
+            item.id === section.id
+              ? {
+                  ...item,
+                  status: "cached",
+                  progress: undefined,
+                  progressStage: undefined,
+                  cachedAt: generatedReport.generated_at
+                    ? new Date(generatedReport.generated_at).toLocaleString()
+                    : new Date().toLocaleString(),
+                }
+              : item
+          )
+        )
+      }
+
+      const analysisResponse = await fetch(`/api/repos/${owner}/${name}/analysis?mode=${reportMode}&lang=${reportLang}`)
+      if (analysisResponse.ok) {
+        const payload = (await analysisResponse.json()) as RepoAnalysisResponse
+        setSections((current) => applyAnalysisStatuses(current, payload.reports))
+      }
+    } catch (generateError) {
+      setError(generateError instanceof Error ? generateError.message : "生成失败")
+      setSections((current) =>
+        current.map((item) =>
+          item.id === section.id
+            ? {
+                ...item,
+                status: reportsBySection[`${section.id}:${reportMode}:${reportLang}`] ? "cached" : "not_generated",
+              }
+            : item
+        )
+      )
+    } finally {
+      window.clearInterval(progressTimer)
+      abortController.abort()
+      setGeneratingSectionIds((current) => {
+        const next = new Set(current)
+        next.delete(section.id)
+        generatingIdsRef.current = next
+        return next
+      })
+    }
+  }
+
+  const activeSectionData = sections.find((section) => section.id === activeSection) || sections[0]
+  const activeReport = reportsBySection[`${activeSection}:${reportMode}:${reportLang}`]
+  const isActiveSectionGenerating = generatingSectionIds.has(activeSection)
+  const backgroundGeneratingSections = sections.filter(
+    (section) => generatingSectionIds.has(section.id) && section.id !== activeSection
+  )
+  const shouldShowLoadingState = isLoading || !repo || !activeSectionData
+
+  // Keep previous report visible during mode/language transitions to avoid flash
+  const displayedReportRef = useRef<ApiAnalysisReport | null>(null)
+  useEffect(() => {
+    if (activeReport) {
+      displayedReportRef.current = activeReport
+    } else if (activeSectionData?.status !== "cached") {
+      // Section is not cached (different section, or deleted) — clear stale report
+      displayedReportRef.current = null
+    }
+  }, [activeReport, activeSectionData?.status, activeSection])
+  const displayedReport = activeReport || displayedReportRef.current
+
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Fixed Sidebar - Collapsed by default on repo pages */}
+      <AppSidebar />
+
+      {/* Main Content Area - Adjust margin based on sidebar state */}
+      <div
+        className="main-content flex h-screen flex-1 flex-col overflow-hidden"
+      >
+        {/* Repo Header */}
+        <RepoHeader repo={repo} isLoading={shouldShowLoadingState} collapsed={headerCollapsed} onToggleCollapse={() => setHeaderCollapsed(!headerCollapsed)} />
+        {error && (
+          <div className="shrink-0 border-b border-border bg-destructive/10 px-4 md:px-6 py-3 text-sm text-destructive flex items-center gap-3">
+            <span>{error}</span>
+          </div>
+        )}
+        {backgroundGeneratingSections.length > 0 && (
+          <div className="shrink-0 border-b border-border bg-primary/10 px-4 md:px-6 py-2 text-xs text-primary">
+            {backgroundGeneratingSections.map((section) => section.name).join("、")} 正在后台生成，完成后会自动更新左侧状态
+          </div>
+        )}
+        
+        {/* Main Content Area */}
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          {/* Left: Analysis Navigation */}
+          {shouldShowLoadingState ? (
+            <>
+              <div className="flex w-72 shrink-0 flex-col gap-3 border-r border-border bg-card/30 p-3">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className="rounded-md border border-border/50 bg-muted/30 p-3">
+                    <div className="mb-2 h-3 w-28 animate-pulse rounded bg-muted" />
+                    <div className="h-2 w-full animate-pulse rounded bg-muted/70" />
+                  </div>
+                ))}
+              </div>
+              <div className="min-w-0 flex-1 overflow-hidden p-4 md:p-6">
+                <div className="mx-auto max-w-4xl space-y-4">
+                  <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+                  <div className="h-28 w-full animate-pulse rounded-lg bg-muted/60" />
+                  <div className="h-44 w-full animate-pulse rounded-lg bg-muted/40" />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <AnalysisSidebar
+                sections={sections}
+                activeSection={activeSection}
+                generatingSectionIds={generatingSectionIds}
+                onSectionChange={(id) => {
+                  setActiveSection(id)
+                  setHeaderCollapsed(true)
+                }}
+              />
+              
+              {/* Right: Analysis Content */}
+              <AnalysisContent
+                section={activeSectionData}
+                repoName={repo.name}
+                onGenerate={handleGenerate}
+                llmConfigured={llmConfigured}
+                isGenerating={isActiveSectionGenerating}
+                generatedContent={displayedReport?.content}
+                generatedBy={displayedReport?.generated_by}
+                generatedAt={displayedReport?.generated_at}
+                reportLang={reportLang}
+                onReportLangChange={setReportLang}
+                reportMode={reportMode}
+                onReportModeChange={setReportMode}
+                reportId={displayedReport?.id}
+              />
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
