@@ -904,9 +904,11 @@ const globalQualityRules = [
 function buildSystemPrompt(sectionType: AnalysisSectionType, config: SectionConfig, lang: ReportLanguage) {
   const languageInstruction = lang === "en"
     ? "Write all natural-language values in English."
-    : "Write all natural-language values in Simplified Chinese."
+    : "所有自然语言内容必须使用简体中文撰写。这是一个硬性要求，不要使用英文。"
 
   return [
+    languageInstruction,
+    "",
     "# Role",
     config.role,
     "",
@@ -930,6 +932,8 @@ function buildSystemPrompt(sectionType: AnalysisSectionType, config: SectionConf
     "# JSON Schema",
     "The output must conform to this schema. Keep top-level fields even when evidence is missing.",
     JSON.stringify(config.schema, null, 2),
+    "",
+    languageInstruction,
   ].join("\n")
 }
 
@@ -942,9 +946,14 @@ function buildUserPrompt(
   lang: ReportLanguage = "zh"
 ) {
   const noEvidence = lang === "en" ? "insufficient evidence, unable to confirm" : "证据不足，无法确认"
+  const langReminder = lang === "en"
+    ? "IMPORTANT: Write all natural-language values in English."
+    : "重要提醒：所有自然语言内容必须使用简体中文撰写，不要使用英文。"
 
   return [
     `# Report Task: ${sectionType}`,
+    "",
+    langReminder,
     "",
     "Generate the final report using the structured evidence pack and the raw repository context below.",
     "The structured evidence pack is the primary source of truth for citations. Raw context is only for cross-checking and nuance.",
@@ -954,6 +963,7 @@ function buildUserPrompt(
     ...buildContextSections(config, context),
     "",
     "# Final Instructions",
+    langReminder,
     `If a field lacks evidence, keep the field and write "${noEvidence}".`,
     "Do not use evidence_refs that are absent from evidence_catalog.",
     "Do not pad the report with generic best practices. Each section must either support a decision, expose a trade-off, identify a risk, or define a concrete validation step.",

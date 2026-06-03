@@ -10,8 +10,8 @@ export const GET = withErrorHandling((request: Request) => {
     ? Number(url.searchParams.get("offset"))
     : undefined
   const tab = url.searchParams.get("tab") || "velocity"
-  const range = url.searchParams.get("range") || "today"
+  const sort = url.searchParams.get("sort") || url.searchParams.get("range") || "velocity"
   const language = url.searchParams.get("language") || undefined
 
-  return jsonResponse(getProjects(page, limit, offset, tab, range, language))
+  return jsonResponse(getProjects(page, limit, offset, tab, sort, language))
 })

@@ -70,3 +70,45 @@ export async function searchGitHubRepos(
     return []
   }
 }
+
+/**
+ * 按 topic 发现热门项目，用于补充 Trending 数据源。
+ * 对每个 topic 构造 GitHub Search 查询，返回去重后的结果。
+ */
+export async function discoverReposByTopics(
+  topics: string[],
+  options?: {
+    minStars?: number
+    language?: string
+    perTopic?: number
+  }
+): Promise<GitHubSearchResult[]> {
+  const { minStars = 100, language, perTopic = 30 } = options || {}
+  const allResults: GitHubSearchResult[] = []
+  const seen = new Set<string>()
+
+  for (const topic of topics) {
+    let query = `topic:${topic}`
+    if (minStars > 0) query += ` stars:>=${minStars}`
+    if (language) query += ` language:${language}`
+    query += ` fork:false`
+
+    const results = await searchGitHubRepos(query, perTopic)
+    for (const item of results) {
+      if (!seen.has(item.full_name)) {
+        seen.add(item.full_name)
+        allResults.push(item)
+      }
+    }
+
+    // GitHub Search API 限流：认证 30 次/分钟，未认证 10 次/分钟
+    // 每次 topic 请求间隔 2.5 秒，确保不超限
+    await sleep(2500)
+  }
+
+  return allResults
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}

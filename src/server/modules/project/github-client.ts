@@ -26,6 +26,43 @@ interface GitHubRepositoryResponse {
   default_branch: string
 }
 
+export async function starGitHubRepo(owner: string, name: string): Promise<void> {
+  const token = getServerEnv().githubToken
+  if (!token) return
+
+  try {
+    await fetch(`${getServerEnv().githubApiBaseUrl}/user/starred/${owner}/${name}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "Content-Length": "0",
+        "User-Agent": "GitSight-MVP",
+      },
+    })
+  } catch {
+    // fire-and-forget: GitHub Star failure should not block local operations
+  }
+}
+
+export async function unstarGitHubRepo(owner: string, name: string): Promise<void> {
+  const token = getServerEnv().githubToken
+  if (!token) return
+
+  try {
+    await fetch(`${getServerEnv().githubApiBaseUrl}/user/starred/${owner}/${name}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "GitSight-MVP",
+      },
+    })
+  } catch {
+    // fire-and-forget: GitHub unstar failure should not block local operations
+  }
+}
+
 export class GitHubRepositoryNotFoundError extends Error {
   constructor(fullName: string) {
     super(`GitHub repository not found: ${fullName}`)

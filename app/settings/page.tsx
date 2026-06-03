@@ -43,6 +43,7 @@ import {
   Plus,
   ChevronDown,
   X,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PushChannels } from "@/components/settings/push-channels";
@@ -664,6 +665,10 @@ function GitHubTokenSettings() {
             <p className="text-xs text-muted-foreground">
               {t.tokenHint}
             </p>
+            <div className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+              <Star className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+              <p className="text-xs text-primary/80">{t.tokenStarSyncHint}</p>
+            </div>
           </div>
 
           {message && (

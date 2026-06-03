@@ -1,5 +1,6 @@
 import { errorResponse, jsonResponse } from "@/src/server/lib/http"
 import { startComparisonMarkdownJob } from "@/src/server/modules/compare/compare-service"
+import { getActiveProvider, isConfigured } from "@/src/server/lib/desktop-config"
 
 interface CompareAnalysisRequest {
   repos?: Array<{
@@ -9,6 +10,10 @@ interface CompareAnalysisRequest {
 }
 
 export async function POST(request: Request) {
+  if (!isConfigured()) {
+    return errorResponse("NOT_CONFIGURED", "请先在设置中配置 LLM API Key", 403)
+  }
+
   const body = (await request.json().catch(() => null)) as CompareAnalysisRequest | null
   const repos = (body?.repos || [])
     .map((repo) => ({
@@ -22,7 +27,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const job = startComparisonMarkdownJob(repos)
+    const active = getActiveProvider()
+    const llmConfig = {
+      provider: active.provider,
+      apiKey: active.apiKey,
+      baseUrl: active.base_url,
+      model: active.model,
+    }
+    const job = startComparisonMarkdownJob(repos, llmConfig)
     return jsonResponse(job)
   } catch (error) {
     return errorResponse(

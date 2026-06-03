@@ -226,7 +226,7 @@ function LandscapeContent() {
           </div>
 
           <aside className="w-full xl:w-[300px] 2xl:w-[340px] shrink-0">
-            <div className="xl:sticky xl:top-[88px]">
+            <div className="xl:sticky xl:top-20">
               <IntelligenceSubscription />
             </div>
           </aside>

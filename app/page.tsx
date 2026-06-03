@@ -91,9 +91,8 @@ function CompactTrendingStrip() {
 export default function HomePage() {
   const router = useRouter();
   const { dict } = useApp();
-  const [timeRange, setTimeRange] = useState("today");
+  const [sortBy, setSortBy] = useState("velocity");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [activeTab, setActiveTab] = useState("velocity");
   const [isLoading, setIsLoading] = useState(true);
   const [projects, setProjects] = useState<ProjectData[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -145,7 +144,7 @@ export default function HomePage() {
       setIsLoading(true);
       try {
         const limit = 12;
-        const params = new URLSearchParams({ limit: String(limit), tab: activeTab, range: timeRange });
+        const params = new URLSearchParams({ limit: String(limit), sort: sortBy });
         if (languageFilter && languageFilter !== "all") params.set("language", languageFilter);
         const response = await fetch(`/api/projects?${params}`);
         if (!response.ok) throw new Error(dict.common.loadingFailed);
@@ -167,11 +166,11 @@ export default function HomePage() {
 
     loadProjects();
     return () => { cancelled = true; };
-  }, [activeTab, timeRange, languageFilter]);
+  }, [sortBy, languageFilter]);
 
   const handleLoadMore = useCallback(async () => {
     try {
-      const response = await fetch(`/api/projects?limit=12&offset=${projects.length}&tab=${activeTab}&range=${timeRange}`);
+      const response = await fetch(`/api/projects?limit=12&offset=${projects.length}&sort=${sortBy}`);
       if (!response.ok) return;
       const payload = await response.json();
       const mapped = (payload.data || []).map(repoToProjectData);
@@ -180,7 +179,7 @@ export default function HomePage() {
     } catch {
       toast.error(dict.discover.loadMoreFailed);
     }
-  }, [projects.length, activeTab, timeRange]);
+  }, [projects.length, sortBy]);
 
   const handleAddToCompare = useCallback((project: ProjectData) => {
     const key = "repo-intel:compare-pending";
@@ -224,12 +223,10 @@ export default function HomePage() {
         className="main-content flex flex-1 flex-col"
       >
         <Header
-          timeRange={timeRange}
-          onTimeRangeChange={setTimeRange}
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
           lastFetchedAt={lastFetchedAt}
           languageFilter={languageFilter}
           onLanguageFilterChange={setLanguageFilter}
@@ -304,9 +301,10 @@ export default function HomePage() {
             <section>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">
-                  {activeTab === "velocity" && dict.discover.shortTermSurging}
-                  {activeTab === "trending" && dict.discover.popularRanking}
-                  {activeTab === "new" && dict.discover.emergingDarkHorse}
+                  {sortBy === "velocity" && dict.discover.sortByVelocity}
+                  {sortBy === "stars" && dict.discover.sortByStars}
+                  {sortBy === "newest" && dict.discover.sortByNewest}
+                  {sortBy === "active" && dict.discover.sortByActive}
                 </h2>
                 <span className="text-xs text-muted-foreground">
                   {projects.length} {dict.discover.totalProjectsCount}

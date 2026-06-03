@@ -42,13 +42,19 @@ export default function RepoDetailPage() {
   const [generatingSectionIds, setGeneratingSectionIds] = useState<Set<string>>(() => new Set())
   const generatingIdsRef = useRef<Set<string>>(new Set())
   const [repo, setRepo] = useState<RepoDetail | null>(null)
-  const [sections, setSections] = useState<AnalysisSection[]>([])
   const [reportsBySection, setReportsBySection] = useState<Record<string, ApiAnalysisReport>>({})
   const [error, setError] = useState<string | null>(null)
   const [reportLang, setReportLang] = useState<"zh" | "en">("zh")
   const [reportMode, setReportMode] = useState<"fast" | "deep">("fast")
   const [headerCollapsed, setHeaderCollapsed] = useState(false)
   const [llmConfigured, setLlmConfigured] = useState(true)
+  const [isWatched, setIsWatched] = useState(false)
+  // 按 mode 分别存储 sections 状态，切换 mode 时直接切换
+  const [sectionsByMode, setSectionsByMode] = useState<Record<string, AnalysisSection[]>>({
+    fast: ANALYSIS_SECTIONS.map((s) => ({ ...s })),
+    deep: ANALYSIS_SECTIONS.map((s) => ({ ...s })),
+  })
+  const sections = sectionsByMode[reportMode] || ANALYSIS_SECTIONS
   const hasGeneratingSection = sections.some((section) => section.status === "generating")
 
   useEffect(() => {
@@ -81,11 +87,25 @@ export default function RepoDetailPage() {
         if (cancelled) return
 
         setRepo(toRepoDetail(repoPayload))
-        setSections(
-          analysisPayload
-            ? applyAnalysisStatuses(ANALYSIS_SECTIONS, analysisPayload.reports)
-            : ANALYSIS_SECTIONS
-        )
+
+        // Check watchlist status
+        fetch(`/api/watchlist/check?repo_id=${repoPayload.id}`)
+          .then((r) => r.json())
+          .then((d) => { if (!cancelled) setIsWatched(!!d.watched) })
+          .catch(() => {})
+        if (analysisPayload) {
+          const fastReports = analysisPayload.fast_reports || analysisPayload.reports
+          const deepReports = analysisPayload.deep_reports || analysisPayload.reports
+          setSectionsByMode({
+            fast: applyAnalysisStatuses(ANALYSIS_SECTIONS.map((s) => ({ ...s })), fastReports),
+            deep: applyAnalysisStatuses(ANALYSIS_SECTIONS.map((s) => ({ ...s })), deepReports),
+          })
+        } else {
+          setSectionsByMode({
+            fast: ANALYSIS_SECTIONS.map((s) => ({ ...s })),
+            deep: ANALYSIS_SECTIONS.map((s) => ({ ...s })),
+          })
+        }
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : dict.common.loadingFailed);
@@ -104,33 +124,6 @@ export default function RepoDetailPage() {
     }
   }, [params.owner, params.name])
 
-  // Re-fetch analysis statuses when mode/language changes (without full page reload)
-  useEffect(() => {
-    if (!repo) return
-    let cancelled = false
-
-    async function reloadAnalysis() {
-      try {
-        const owner = encodeURIComponent(repo!.owner)
-        const name = encodeURIComponent(repo!.name)
-        const response = await fetch(`/api/repos/${owner}/${name}/analysis?mode=${reportMode}&lang=${reportLang}`)
-        if (!response.ok) return
-        const payload = (await response.json()) as RepoAnalysisResponse
-        if (!cancelled) {
-          const ids = generatingIdsRef.current
-          setSections((current) => applyAnalysisStatuses(current, payload.reports, ids))
-        }
-      } catch {
-      }
-    }
-
-    reloadAnalysis()
-
-    return () => {
-      cancelled = true
-    }
-  }, [repo, reportLang, reportMode])
-
   useEffect(() => {
     if (!repo || !hasGeneratingSection) return
 
@@ -144,7 +137,12 @@ export default function RepoDetailPage() {
         if (!response.ok) return
         const payload = (await response.json()) as RepoAnalysisResponse
         if (!cancelled) {
-          setSections((current) => applyAnalysisStatuses(current, payload.reports, generatingIdsRef.current))
+          const fastReports = payload.fast_reports || payload.reports
+          const deepReports = payload.deep_reports || payload.reports
+          setSectionsByMode((prev) => ({
+            fast: applyAnalysisStatuses(prev.fast, fastReports, generatingIdsRef.current),
+            deep: applyAnalysisStatuses(prev.deep, deepReports, generatingIdsRef.current),
+          }))
         }
       } catch {
       }
@@ -229,13 +227,14 @@ export default function RepoDetailPage() {
 
     for (const step of steps) {
       await new Promise((resolve) => window.setTimeout(resolve, 850))
-      setSections((current) =>
-        current.map((item) =>
+      setSectionsByMode((prev) => ({
+        ...prev,
+        [reportMode]: prev[reportMode].map((item) =>
           item.id === sectionId && item.status === "generating"
             ? { ...item, progress: step.progress, progressStage: step.stage }
             : item
-        )
-      )
+        ),
+      }))
     }
 
     await new Promise((resolve) => window.setTimeout(resolve, 650))
@@ -250,8 +249,9 @@ export default function RepoDetailPage() {
       generatingIdsRef.current = next
       return next
     })
-    setSections((current) =>
-      current.map((item) =>
+    setSectionsByMode((prev) => ({
+      ...prev,
+      [reportMode]: prev[reportMode].map((item) =>
         item.id === section.id
           ? {
               ...item,
@@ -260,20 +260,21 @@ export default function RepoDetailPage() {
               progressStage: reportMode === "fast" ? t.generatingFastReport : t.generatingDeepReport,
             }
           : item
-      )
-    )
+      ),
+    }))
     setError(null)
 
     const abortController = new AbortController()
 
     const progressTimer = window.setInterval(() => {
-      setSections((current) =>
-        current.map((item) =>
+      setSectionsByMode((prev) => ({
+        ...prev,
+        [reportMode]: prev[reportMode].map((item) =>
           item.id === section.id && item.status === "generating"
             ? { ...item, progress: Math.min((item.progress || 8) + 7, 92) }
             : item
-        )
-      )
+        ),
+      }))
     }, 900)
 
     try {
@@ -321,8 +322,9 @@ export default function RepoDetailPage() {
       })
 
       if (generatedReport) {
-        setSections((current) =>
-          current.map((item) =>
+        setSectionsByMode((prev) => ({
+          ...prev,
+          [reportMode]: prev[reportMode].map((item) =>
             item.id === section.id
               ? {
                   ...item,
@@ -334,27 +336,33 @@ export default function RepoDetailPage() {
                     : new Date().toLocaleString(),
                 }
               : item
-          )
-        )
+          ),
+        }))
       }
 
       const analysisResponse = await fetch(`/api/repos/${owner}/${name}/analysis?mode=${reportMode}&lang=${reportLang}`)
       if (analysisResponse.ok) {
         const payload = (await analysisResponse.json()) as RepoAnalysisResponse
-        setSections((current) => applyAnalysisStatuses(current, payload.reports))
+        const fastReports = payload.fast_reports || payload.reports
+        const deepReports = payload.deep_reports || payload.reports
+        setSectionsByMode((prev) => ({
+          fast: applyAnalysisStatuses(prev.fast, fastReports),
+          deep: applyAnalysisStatuses(prev.deep, deepReports),
+        }))
       }
     } catch (generateError) {
       setError(generateError instanceof Error ? generateError.message : dict.common.loadingFailed)
-      setSections((current) =>
-        current.map((item) =>
+      setSectionsByMode((prev) => ({
+        ...prev,
+        [reportMode]: prev[reportMode].map((item) =>
           item.id === section.id
             ? {
                 ...item,
                 status: reportsBySection[`${section.id}:${reportMode}:${reportLang}`] ? "cached" : "not_generated",
               }
             : item
-        )
-      )
+        ),
+      }))
     } finally {
       window.clearInterval(progressTimer)
       abortController.abort()
@@ -404,6 +412,24 @@ export default function RepoDetailPage() {
   }, [activeReport, activeSectionData?.status, activeSection])
   const displayedReport = activeReport || displayedReportRef.current
 
+  const handleToggleWatch = async () => {
+    if (!repo) return
+    const repoId = Number(repo.id)
+    try {
+      if (isWatched) {
+        await fetch(`/api/watchlist?repo_id=${repoId}`, { method: "DELETE" })
+        setIsWatched(false)
+      } else {
+        await fetch("/api/watchlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repo_id: repoId }),
+        })
+        setIsWatched(true)
+      }
+    } catch {}
+  }
+
   return (
     <div className="flex h-screen bg-background">
       {/* Fixed Sidebar - Collapsed by default on repo pages */}
@@ -414,7 +440,7 @@ export default function RepoDetailPage() {
         className="main-content flex h-screen flex-1 flex-col overflow-hidden"
       >
         {/* Repo Header */}
-        <RepoHeader repo={repo} isLoading={shouldShowLoadingState} collapsed={headerCollapsed} onToggleCollapse={() => setHeaderCollapsed(!headerCollapsed)} />
+        <RepoHeader repo={repo} isLoading={shouldShowLoadingState} collapsed={headerCollapsed} onToggleCollapse={() => setHeaderCollapsed(!headerCollapsed)} isWatched={isWatched} onToggleWatch={handleToggleWatch} />
         {error && (
           <div className="shrink-0 border-b border-border bg-destructive/10 px-4 md:px-6 py-3 text-sm text-destructive flex items-center gap-3">
             <span>{error}</span>

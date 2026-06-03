@@ -155,7 +155,6 @@
     margin-left: var(--sidebar-width);
     transition: margin-left 300ms ease-in-out;
     min-width: 0;
-    overflow-x: hidden;
   }
   button,
   [role="button"],

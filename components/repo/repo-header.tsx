@@ -1,6 +1,6 @@
 "use client"
 
-import { Star, GitFork, Eye, ExternalLink, Users, Clock, Tag, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react"
+import { Star, GitFork, Eye, ExternalLink, Users, Clock, Tag, ArrowLeft, ChevronDown, ChevronUp, Bookmark, BookmarkCheck } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,8 @@ interface RepoHeaderProps {
   isLoading?: boolean
   collapsed?: boolean
   onToggleCollapse?: () => void
+  isWatched?: boolean
+  onToggleWatch?: () => void
 }
 
 function formatNumber(num: number): string {
@@ -24,7 +26,7 @@ function formatNumber(num: number): string {
   return num.toString()
 }
 
-export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: RepoHeaderProps) {
+export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse, isWatched, onToggleWatch }: RepoHeaderProps) {
   const router = useRouter()
   const { dict } = useApp()
   const t = dict.repoHeader
@@ -79,6 +81,14 @@ export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: Rep
             <a href={`https://github.com/${repo.fullName}`} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3 w-3" />
             </a>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("h-6 gap-1 shrink-0 px-1.5", isWatched ? "text-primary hover:text-primary" : "text-muted-foreground hover:text-foreground")}
+            onClick={onToggleWatch}
+          >
+            {isWatched ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
           </Button>
           {collapsed && (
             <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground shrink-0">

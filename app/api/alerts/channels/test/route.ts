@@ -17,12 +17,13 @@ export async function POST(request: Request) {
     return errorResponse("CHANNEL_NOT_FOUND", "渠道不存在", 404)
   }
 
-  const success = await testPushChannel(channel)
+  const result = await testPushChannel(channel)
 
   return jsonResponse({
     channelId: channel.id,
     channelName: channel.name,
     channelType: channel.type,
-    success,
+    success: result.success,
+    error: result.error,
   })
 }

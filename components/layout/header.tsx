@@ -1,6 +1,5 @@
 "use client";
 
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,33 +21,29 @@ import {
   LayoutGrid,
   List,
   ChevronDown,
-  Flame,
-  TrendingUp,
-  Clock,
   Star,
   Radar,
+  Zap,
+  Sparkles,
+  Activity,
 } from "lucide-react";
 import { useApp } from "@/components/app-provider";
 
 interface HeaderProps {
-  timeRange: string;
-  onTimeRangeChange: (value: string) => void;
+  sortBy: string;
+  onSortByChange: (value: string) => void;
   viewMode: "grid" | "list";
   onViewModeChange: (mode: "grid" | "list") => void;
-  activeTab: string;
-  onTabChange: (value: string) => void;
   lastFetchedAt?: Date | null;
   languageFilter?: string;
   onLanguageFilterChange?: (value: string) => void;
 }
 
 export function Header({
-  timeRange,
-  onTimeRangeChange,
+  sortBy,
+  onSortByChange,
   viewMode,
   onViewModeChange,
-  activeTab,
-  onTabChange,
   lastFetchedAt,
   languageFilter,
   onLanguageFilterChange,
@@ -59,50 +54,37 @@ export function Header({
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-auto min-h-16 items-center justify-between gap-2 px-4 md:px-6 py-2">
-        {/* Left: Title & Tabs */}
+        {/* Left: Title */}
         <div className="flex items-center gap-2 md:gap-4 min-w-0 shrink-0">
           <div className="shrink-0">
             <h1 className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <Radar className="h-5 w-5 text-primary" />
-              <span className="hidden sm:inline">{d.title}</span>
-              <span className="sm:hidden">{d.title}</span>
+              <span>{d.title}</span>
             </h1>
             <p className="text-xs text-muted-foreground hidden sm:block">{d.subtitle}</p>
-          </div>
-          
-          <div className="hidden lg:block">
-            <Tabs value={activeTab} onValueChange={onTabChange}>
-              <TabsList className="bg-muted/50">
-                <TabsTrigger value="velocity" className="gap-2 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-sm">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  <span>{d.sortByVelocity}</span>
-                </TabsTrigger>
-                <TabsTrigger value="trending" className="gap-2 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-sm">
-                  <Flame className="h-3.5 w-3.5" />
-                  <span>{d.trending}</span>
-                </TabsTrigger>
-                <TabsTrigger value="new" className="gap-2 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-sm">
-                  <Star className="h-3.5 w-3.5" />
-                  <span>{d.recentlyAnalyzed}</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
           </div>
         </div>
 
         {/* Right: Controls */}
         <div className="flex items-center gap-1 md:gap-2 shrink-0">
-          {/* Time Range Selector */}
-          <Select value={timeRange} onValueChange={onTimeRangeChange}>
+          {/* Sort By Selector */}
+          <Select value={sortBy} onValueChange={onSortByChange}>
             <SelectTrigger className="w-[110px] md:w-[130px] border-border bg-input">
-              <Clock className="mr-1 md:mr-2 h-3.5 w-3.5 text-muted-foreground" />
-              <SelectValue placeholder={d.timeRange} />
+              <SelectValue placeholder={d.sortBy} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="today">{dict.dashboard.todayPlus.trim()}</SelectItem>
-              <SelectItem value="week">{dict.dashboard.thisWeek.trim()}</SelectItem>
-              <SelectItem value="month">{d.thisMonth}</SelectItem>
-              <SelectItem value="all">{d.allTime}</SelectItem>
+              <SelectItem value="velocity">
+                <span className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-primary" /> {d.sortByVelocity}</span>
+              </SelectItem>
+              <SelectItem value="stars">
+                <span className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-yellow-500" /> {d.sortByStars}</span>
+              </SelectItem>
+              <SelectItem value="newest">
+                <span className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5 text-green-500" /> {d.sortByNewest}</span>
+              </SelectItem>
+              <SelectItem value="active">
+                <span className="flex items-center gap-2"><Activity className="h-3.5 w-3.5 text-blue-500" /> {d.sortByActive}</span>
+              </SelectItem>
             </SelectContent>
           </Select>
 

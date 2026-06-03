@@ -61,8 +61,31 @@ export const PROVIDER_DEFAULTS: Record<string, { label: string; base_url: string
   custom:      { label: "自定义 (Custom)",                base_url: "",                                                             model: "" },
 }
 
+// ── Persist caches across HMR via globalThis ───────────────────
+const GLOBAL_CONFIG_DIR_KEY = Symbol.for("gitsight.configDir")
+const GLOBAL_CONFIG_KEY = Symbol.for("gitsight.cachedConfig")
+
+function getCachedConfigDir(): string | null {
+  return (globalThis as Record<symbol, string | null>)[GLOBAL_CONFIG_DIR_KEY] ?? null
+}
+
+function setCachedConfigDir(dir: string): void {
+  ;(globalThis as Record<symbol, string>)[GLOBAL_CONFIG_DIR_KEY] = dir
+}
+
+function getCachedConfig(): DesktopConfig | null {
+  return (globalThis as Record<symbol, DesktopConfig | null>)[GLOBAL_CONFIG_KEY] ?? null
+}
+
+function setCachedConfig(config: DesktopConfig | null): void {
+  ;(globalThis as Record<symbol, DesktopConfig | null>)[GLOBAL_CONFIG_KEY] = config
+}
+
 // ── Config directory ───────────────────────────────────────────
 function getConfigDir(): string {
+  const cached = getCachedConfigDir()
+  if (cached) return cached
+
   const home = process.env.HOME || process.env.USERPROFILE
   if (home) {
     const userDir = path.join(home, ".repointel")
@@ -71,11 +94,13 @@ function getConfigDir(): string {
       const testFile = path.join(userDir, ".write-test")
       writeFileSync(testFile, "", "utf8")
       try { require("fs").unlinkSync(testFile) } catch {}
+      setCachedConfigDir(userDir)
       return userDir
     } catch { /* fall through */ }
   }
   const localDir = path.join(process.cwd(), ".data")
   if (!existsSync(localDir)) mkdirSync(localDir, { recursive: true })
+  setCachedConfigDir(localDir)
   return localDir
 }
 
@@ -84,25 +109,27 @@ function getConfigPath(): string {
 }
 
 // ── Read / Write ───────────────────────────────────────────────
-let cachedConfig: DesktopConfig | null = null
-
 export function readConfig(): DesktopConfig {
-  if (cachedConfig) return cachedConfig
+  const cached = getCachedConfig()
+  if (cached) return cached
 
   const configPath = getConfigPath()
   if (!existsSync(configPath)) {
-    cachedConfig = { ...defaultConfig }
-    return cachedConfig
+    const cfg = { ...defaultConfig }
+    setCachedConfig(cfg)
+    return cfg
   }
 
   try {
     const raw = readFileSync(configPath, "utf8")
     const parsed = JSON.parse(raw) as Record<string, unknown>
-    cachedConfig = migrateConfig(parsed)
-    return cachedConfig
+    const cfg = migrateConfig(parsed)
+    setCachedConfig(cfg)
+    return cfg
   } catch {
-    cachedConfig = { ...defaultConfig }
-    return cachedConfig
+    const cfg = { ...defaultConfig }
+    setCachedConfig(cfg)
+    return cfg
   }
 }
 
@@ -138,7 +165,7 @@ function migrateConfig(raw: Record<string, unknown>): DesktopConfig {
 export function writeConfig(config: DesktopConfig): void {
   const configPath = getConfigPath()
   writeFileSync(configPath, JSON.stringify(config, null, 2), "utf8")
-  cachedConfig = config
+  setCachedConfig(config)
 }
 
 export function updateConfig(partial: Partial<DesktopConfig>): DesktopConfig {
@@ -155,6 +182,9 @@ export function getActiveProvider(): LlmProviderConfig & { apiKey: string } {
   const config = readConfig()
   const active = config.llm_providers.find((p) => p.id === config.llm_active_provider_id)
     || config.llm_providers[0]
+  if (!active) {
+    return { id: "", provider: "openai", base_url: "https://api.openai.com/v1", model: "gpt-4.1-mini", apiKey: "" }
+  }
   return { ...active, apiKey: config.llm_api_keys[active.id] || "" }
 }
 
@@ -191,9 +221,9 @@ export function isConfigured(): boolean {
   const config = readConfig()
   if (config.llm_providers?.length > 0) {
     const active = getActiveProvider()
-    return Boolean(config.github_token) && Boolean(active.apiKey)
+    return Boolean(active.apiKey)
   }
-  return Boolean(config.github_token) && Boolean(config.llm_api_key)
+  return Boolean(config.llm_api_key)
 }
 
 export function getConfigDirPath(): string {

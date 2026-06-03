@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type React from "react";
 import { CheckCircle2, Download, FileText, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { CompareHeader } from "@/components/compare/compare-header";
 import { ProjectSelector } from "@/components/compare/project-selector";
@@ -360,7 +361,10 @@ export default function ComparePage() {
 
           {selectedProjects.length >= 2 ? (
             <>
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <div className={cn(
+                "grid gap-6",
+                selectedProjects.length >= 4 ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-2"
+              )}>
                 <div className="min-w-0">
                   <CompareRadarChart projects={selectedProjects} />
                 </div>

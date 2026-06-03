@@ -85,7 +85,10 @@ const defaultStore: AppStoreData = {
   push_channels: [],
 }
 
+const CACHE_TTL_MS = 5 * 1000 // 5 秒缓存过期，确保同步数据可被 API 读取
+
 let storeCache: AppStoreData | null = null
+let storeCacheTime = 0
 
 function readReposFromDb(): RepoRecord[] {
   const db = getDb()
@@ -335,10 +338,12 @@ function writeAllToDb(data: AppStoreData) {
 }
 
 export function readStore(): AppStoreData {
-  if (storeCache) return storeCache
+  const now = Date.now()
+  if (storeCache && now - storeCacheTime < CACHE_TTL_MS) return storeCache
 
   try {
     storeCache = loadAllFromDb()
+    storeCacheTime = now
     maybeTriggerTrendingSync(storeCache)
     return storeCache
   } catch (error) {
@@ -361,9 +366,11 @@ async function maybeTriggerTrendingSync(store: AppStoreData) {
   trendingSyncInFlight = true
   console.log("[DataStore] Triggering trending sync (repos empty or stale)...")
   try {
-    const { syncTrending } = await import("@/src/server/lib/sync-scheduler")
-    const result = await syncTrending("weekly")
-    console.log("[DataStore] Trending sync result:", JSON.stringify(result))
+    const { syncTrending, syncTopicDiscovery } = await import("@/src/server/lib/sync-scheduler")
+    const weeklyResult = await syncTrending("weekly")
+    console.log("[DataStore] Weekly trending sync result:", JSON.stringify(weeklyResult))
+    const topicResult = await syncTopicDiscovery()
+    console.log("[DataStore] Topic discovery result:", JSON.stringify(topicResult))
   } catch (err) {
     console.error("[DataStore] Trending sync failed:", err)
   } finally {
@@ -375,13 +382,17 @@ export function writeStore(next: AppStoreData) {
   try {
     writeAllToDb(next)
     storeCache = next
+    storeCacheTime = Date.now()
   } catch (error) {
     console.error("[DataStore] Failed to write to SQLite:", error)
   }
 }
 
 export async function updateStore<T>(updater: (current: AppStoreData) => T): Promise<T> {
-  const current = readStore()
+  // 始终从 DB 重新加载，避免多进程/模块实例间缓存不一致导致全量覆盖
+  const current = loadAllFromDb()
+  storeCache = current
+  storeCacheTime = Date.now()
   maybeCleanupStaleData(current)
   const result = updater(current)
   writeStore(current)

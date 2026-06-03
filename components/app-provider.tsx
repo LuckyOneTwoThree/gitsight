@@ -84,7 +84,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [config, setNextTheme])
 
-  const isConfigured = Boolean(config?.github_token) && Boolean(config?.llm_providers?.some(p => p.hasApiKey))
+  const isConfigured = Boolean(config?.llm_providers?.some(p => p.hasApiKey))
 
   const setLocale = useCallback(async (next: Locale) => {
     setLocaleState(next)

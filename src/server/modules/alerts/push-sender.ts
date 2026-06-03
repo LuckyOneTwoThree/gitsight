@@ -23,6 +23,8 @@ export interface PushResult {
   channels: { id: string; type: string; success: boolean }[]
 }
 
+type SendResult = { success: boolean; error?: string }
+
 export async function sendPushNotification(rule: AlertRuleRecord, payload: PushPayload): Promise<PushResult> {
   const store = readStore()
   const results: { id: string; type: string; success: boolean }[] = []
@@ -30,9 +32,9 @@ export async function sendPushNotification(rule: AlertRuleRecord, payload: PushP
   let failed = 0
 
   if (rule.channels.webhook && rule.channels.webhook_url) {
-    const ok = await sendWebhook(rule.channels.webhook_url, payload)
-    results.push({ id: "legacy-webhook", type: "webhook", success: ok })
-    if (ok) sent++; else failed++
+    const result = await sendWebhook(rule.channels.webhook_url, payload)
+    results.push({ id: "legacy-webhook", type: "webhook", success: result.success })
+    if (result.success) sent++; else failed++
   }
 
   for (const channelId of rule.channels.channel_ids) {
@@ -43,57 +45,62 @@ export async function sendPushNotification(rule: AlertRuleRecord, payload: PushP
       continue
     }
 
-    const ok = await sendToChannel(channel, payload)
-    results.push({ id: channelId, type: channel.type, success: ok })
-    if (ok) sent++; else failed++
+    const result = await sendToChannel(channel, payload)
+    results.push({ id: channelId, type: channel.type, success: result.success })
+    if (result.success) sent++; else failed++
   }
 
   return { sent, failed, channels: results }
 }
 
-async function sendToChannel(channel: PushChannel, payload: PushPayload): Promise<boolean> {
+async function sendToChannel(channel: PushChannel, payload: PushPayload): Promise<SendResult> {
   try {
-    let ok = false
+    let result: SendResult
     switch (channel.type) {
       case "feishu":
       case "wecom":
       case "dingtalk":
-        ok = await sendGroupBotWebhook(channel.config.webhook_url || "", channel.type, payload)
+        result = await sendGroupBotWebhook(channel.config.webhook_url || "", channel.type, payload)
         break
       case "bark":
-        ok = await sendBark(channel.config.bark_key || "", channel.config.bark_server, payload)
+        result = await sendBark(channel.config.bark_key || "", channel.config.bark_server, payload)
         break
       case "pushplus":
-        ok = await sendPushPlus(channel.config.pushplus_token || "", payload)
+        result = await sendPushPlus(channel.config.pushplus_token || "", payload)
         break
       case "qmsg":
-        ok = await sendQmsg(channel.config.qmsg_key || "", payload)
+        result = await sendQmsg(channel.config.qmsg_key || "", payload)
         break
       case "discord":
-        ok = await sendDiscord(channel.config.discord_webhook_url || "", payload)
+        result = await sendDiscord(channel.config.discord_webhook_url || "", payload)
         break
       case "telegram":
-        ok = await sendTelegram(channel.config.telegram_bot_token || "", channel.config.telegram_chat_id || "", payload)
+        result = await sendTelegram(channel.config.telegram_bot_token || "", channel.config.telegram_chat_id || "", payload)
         break
       case "serverchan":
-        ok = await sendServerChan(channel.config.serverchan_key || "", payload)
+        result = await sendServerChan(channel.config.serverchan_key || "", payload)
         break
       case "wxpusher":
-        ok = await sendWxPusher(channel.config.wxpusher_app_token || "", channel.config.wxpusher_uids || [], payload)
+        result = await sendWxPusher(channel.config.wxpusher_app_token || "", channel.config.wxpusher_uids || [], payload)
         break
       case "webhook":
-        ok = await sendCustomWebhook(channel.config.custom_url || "", channel.config.custom_headers, channel.config.custom_body_template, payload)
+        result = await sendCustomWebhook(channel.config.custom_url || "", channel.config.custom_headers, channel.config.custom_body_template, payload)
         break
       default:
-        ok = false
+        result = { success: false, error: `不支持的渠道类型: ${channel.type}` }
     }
-    return ok
-  } catch {
-    return false
+    return result
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
 
-export async function testPushChannel(channel: PushChannel): Promise<boolean> {
+export interface TestPushResult {
+  success: boolean
+  error?: string
+}
+
+export async function testPushChannel(channel: PushChannel): Promise<TestPushResult> {
   const testPayload: PushPayload = {
     ruleName: "测试推送",
     ruleId: "test",
@@ -108,9 +115,9 @@ export async function testPushChannel(channel: PushChannel): Promise<boolean> {
     totalMatches: 1,
   }
 
-  const ok = await sendToChannel(channel, testPayload)
-  await updateChannelTestResult(channel.id, ok ? "success" : "failed")
-  return ok
+  const result = await sendToChannel(channel, testPayload)
+  await updateChannelTestResult(channel.id, result.success ? "success" : "failed")
+  return result
 }
 
 function buildMarkdownText(payload: PushPayload): string {
@@ -148,7 +155,19 @@ function buildPlainText(payload: PushPayload): string {
   return lines.join("\n")
 }
 
-async function sendWebhook(url: string, payload: PushPayload): Promise<boolean> {
+function classifyError(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.name === "AbortError") return "请求超时（10秒），请检查网络连接或目标服务是否可达"
+    if (error.message.includes("ECONNREFUSED")) return "连接被拒绝，目标服务不可达"
+    if (error.message.includes("ENOTFOUND")) return "DNS 解析失败，请检查网络连接"
+    if (error.message.includes("ECONNRESET")) return "连接被重置，目标服务可能不可用"
+    if (error.message.includes("fetch failed")) return "网络请求失败，请检查网络连接"
+    return error.message
+  }
+  return String(error)
+}
+
+async function sendWebhook(url: string, payload: PushPayload): Promise<SendResult> {
   try {
     const body = {
       event: "alert.match",
@@ -176,14 +195,17 @@ async function sendWebhook(url: string, payload: PushPayload): Promise<boolean> 
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    return response.ok
-  } catch {
-    return false
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 
-async function sendGroupBotWebhook(url: string, type: string, payload: PushPayload): Promise<boolean> {
-  if (!url) return false
+async function sendGroupBotWebhook(url: string, type: string, payload: PushPayload): Promise<SendResult> {
+  if (!url) return { success: false, error: "Webhook URL 未配置" }
   try {
     const markdown = buildMarkdownText(payload)
     let body: Record<string, unknown>
@@ -203,14 +225,18 @@ async function sendGroupBotWebhook(url: string, type: string, payload: PushPaylo
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    return response.ok
-  } catch {
-    return false
+    if (!response.ok) {
+      const text = await response.text().catch(() => "")
+      return { success: false, error: `HTTP ${response.status}: ${text || response.statusText}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 
-async function sendBark(key: string, server: string | undefined, payload: PushPayload): Promise<boolean> {
-  if (!key) return false
+async function sendBark(key: string, server: string | undefined, payload: PushPayload): Promise<SendResult> {
+  if (!key) return { success: false, error: "Bark Key 未配置" }
   try {
     const baseUrl = server || "https://api.day.app"
     const text = buildPlainText(payload)
@@ -219,14 +245,17 @@ async function sendBark(key: string, server: string | undefined, payload: PushPa
     const timeout = setTimeout(() => controller.abort(), 10000)
     const response = await fetch(url, { signal: controller.signal })
     clearTimeout(timeout)
-    return response.ok
-  } catch {
-    return false
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 
-async function sendPushPlus(token: string, payload: PushPayload): Promise<boolean> {
-  if (!token) return false
+async function sendPushPlus(token: string, payload: PushPayload): Promise<SendResult> {
+  if (!token) return { success: false, error: "PushPlus Token 未配置" }
   try {
     const body = {
       token,
@@ -243,15 +272,21 @@ async function sendPushPlus(token: string, payload: PushPayload): Promise<boolea
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    const result = await response.json() as { code: number }
-    return result.code === 200
-  } catch {
-    return false
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+    }
+    const result = await response.json() as { code: number; msg?: string }
+    if (result.code !== 200) {
+      return { success: false, error: `PushPlus 返回错误 (code: ${result.code}): ${result.msg || "未知错误"}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 
-async function sendQmsg(key: string, payload: PushPayload): Promise<boolean> {
-  if (!key) return false
+async function sendQmsg(key: string, payload: PushPayload): Promise<SendResult> {
+  if (!key) return { success: false, error: "Qmsg Key 未配置" }
   try {
     const text = buildPlainText(payload)
     const controller = new AbortController()
@@ -263,14 +298,17 @@ async function sendQmsg(key: string, payload: PushPayload): Promise<boolean> {
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    return response.ok
-  } catch {
-    return false
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 
-async function sendDiscord(webhookUrl: string, payload: PushPayload): Promise<boolean> {
-  if (!webhookUrl) return false
+async function sendDiscord(webhookUrl: string, payload: PushPayload): Promise<SendResult> {
+  if (!webhookUrl) return { success: false, error: "Discord Webhook URL 未配置" }
   try {
     const lines = payload.matches.slice(0, 10).map((m) =>
       `🔥 **${m.fullName}** (${m.language}, ⭐${m.stars.toLocaleString()}) - ${m.reason}`
@@ -296,14 +334,17 @@ async function sendDiscord(webhookUrl: string, payload: PushPayload): Promise<bo
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    return response.ok
-  } catch {
-    return false
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 
-async function sendTelegram(botToken: string, chatId: string, payload: PushPayload): Promise<boolean> {
-  if (!botToken || !chatId) return false
+async function sendTelegram(botToken: string, chatId: string, payload: PushPayload): Promise<SendResult> {
+  if (!botToken || !chatId) return { success: false, error: "Telegram Bot Token 或 Chat ID 未配置" }
   try {
     const text = buildMarkdownText(payload)
     const body = {
@@ -320,14 +361,18 @@ async function sendTelegram(botToken: string, chatId: string, payload: PushPaylo
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    return response.ok
-  } catch {
-    return false
+    if (!response.ok) {
+      const result = await response.json().catch(() => null) as { description?: string } | null
+      return { success: false, error: `HTTP ${response.status}: ${result?.description || response.statusText}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 
-async function sendServerChan(key: string, payload: PushPayload): Promise<boolean> {
-  if (!key) return false
+async function sendServerChan(key: string, payload: PushPayload): Promise<SendResult> {
+  if (!key) return { success: false, error: "Server酱 SendKey 未配置" }
   try {
     const body = {
       title: `📊 GitSight 情报速递 - ${payload.ruleName}`,
@@ -342,14 +387,17 @@ async function sendServerChan(key: string, payload: PushPayload): Promise<boolea
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    return response.ok
-  } catch {
-    return false
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 
-async function sendWxPusher(appToken: string, uids: string[], payload: PushPayload): Promise<boolean> {
-  if (!appToken || !uids.length) return false
+async function sendWxPusher(appToken: string, uids: string[], payload: PushPayload): Promise<SendResult> {
+  if (!appToken || !uids.length) return { success: false, error: "WxPusher App Token 或 UID 未配置" }
   try {
     const body = {
       appToken,
@@ -366,15 +414,21 @@ async function sendWxPusher(appToken: string, uids: string[], payload: PushPaylo
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    const result = await response.json() as { code: number }
-    return result.code === 1000
-  } catch {
-    return false
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+    }
+    const result = await response.json() as { code: number; msg?: string }
+    if (result.code !== 1000) {
+      return { success: false, error: `WxPusher 返回错误 (code: ${result.code}): ${result.msg || "未知错误"}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 
-async function sendCustomWebhook(url: string, headers: Record<string, string> | undefined, bodyTemplate: string | undefined, payload: PushPayload): Promise<boolean> {
-  if (!url) return false
+async function sendCustomWebhook(url: string, headers: Record<string, string> | undefined, bodyTemplate: string | undefined, payload: PushPayload): Promise<SendResult> {
+  if (!url) return { success: false, error: "自定义 Webhook URL 未配置" }
   try {
     let body: string
     if (bodyTemplate) {
@@ -396,9 +450,12 @@ async function sendCustomWebhook(url: string, headers: Record<string, string> | 
       signal: controller.signal,
     })
     clearTimeout(timeout)
-    return response.ok
-  } catch {
-    return false
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
+    }
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: classifyError(error) }
   }
 }
 

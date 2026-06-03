@@ -87,7 +87,7 @@ export async function recordCurrentMetrics(repo: RepoRecord): Promise<RepoMetric
   return await recordRepoMetricsSnapshot(repo)
 }
 
-export function getProjects(page = 1, limit = 12, offset?: number, tab = "velocity", range = "today", language?: string) {
+export function getProjects(page = 1, limit = 12, offset?: number, tab = "velocity", sort = "velocity", language?: string) {
   ensureBaselineSnapshots()
   const safePage = Math.max(page, 1)
   const safeLimit = Math.min(Math.max(limit, 1), 50)
@@ -130,7 +130,7 @@ export function getProjects(page = 1, limit = 12, offset?: number, tab = "veloci
     }
   })
 
-  const sorted = sortReposByTab(reposWithScores, tab, range)
+  const sorted = sortReposByTab(reposWithScores, tab, sort)
   const sliced = sorted.slice(effectiveOffset, effectiveOffset + safeLimit)
 
   return {
@@ -145,27 +145,53 @@ export function getProjects(page = 1, limit = 12, offset?: number, tab = "veloci
   }
 }
 
-function sortReposByTab<T extends { stars: number; stars_today: number; stars_week: number; stars_month: number; velocity_score: number; updated_at: string }>(
+function sortReposByTab<T extends { stars: number; stars_today: number; stars_week: number; stars_month: number; velocity_score: number; updated_at: string; synced_at: string | null }>(
   repos: T[],
   tab: string,
-  range: string
+  sort: string
 ): T[] {
-  switch (tab) {
-    case "velocity":
-      if (range === "today" || range === "daily") return [...repos].sort((a, b) => b.stars_today - a.stars_today || b.stars_week - a.stars_week)
-      if (range === "week" || range === "weekly") return [...repos].sort((a, b) => b.stars_week - a.stars_week || b.stars - a.stars)
-      if (range === "month" || range === "monthly") return [...repos].sort((a, b) => b.stars_month - a.stars_month || b.stars - a.stars)
-      return [...repos].sort((a, b) => b.velocity_score - a.velocity_score)
-    case "trending":
-      return [...repos].sort((a, b) => b.stars_week - a.stars_week || b.stars - a.stars)
-    case "rising":
-      return [...repos].sort((a, b) => b.stars_today - a.stars_today || b.stars_week - a.stars_week)
-    case "popular":
-      return [...repos].sort((a, b) => b.stars - a.stars)
-    case "recent":
-    default:
-      return [...repos].sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))
+  // sort 参数决定主排序维度
+  const getSortComparator = (): (a: T, b: T) => number => {
+    switch (sort) {
+      case "stars":
+        return (a, b) => b.stars - a.stars
+      case "newest":
+        return (a, b) => {
+          const aTime = a.synced_at ? Date.parse(a.synced_at) : 0
+          const bTime = b.synced_at ? Date.parse(b.synced_at) : 0
+          return bTime - aTime
+        }
+      case "active":
+        return (a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)
+      case "velocity":
+      default:
+        return (a, b) => b.velocity_score - a.velocity_score
+    }
   }
+
+  // tab 参数作为二级排序
+  const getTabComparator = (): (a: T, b: T) => number => {
+    switch (tab) {
+      case "trending":
+        return (a, b) => b.stars_week - a.stars_week || b.stars - a.stars
+      case "rising":
+        return (a, b) => b.stars_today - a.stars_today || b.stars_week - a.stars_week
+      case "popular":
+        return (a, b) => b.stars - a.stars
+      case "recent":
+      default:
+        return (a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)
+    }
+  }
+
+  const primary = getSortComparator()
+  const secondary = getTabComparator()
+
+  return [...repos].sort((a, b) => {
+    const primaryResult = primary(a, b)
+    if (primaryResult !== 0) return primaryResult
+    return secondary(a, b)
+  })
 }
 
 export function getNewlyTrending(hours = 24, limit = 6) {
@@ -202,13 +228,47 @@ export function getNewlyTrending(hours = 24, limit = 6) {
 export function getProjectStats() {
   const store = readStore()
   const repos = store.repos
+  const allSnapshots = store.metrics_snapshots
 
-  const starsToday = repos.reduce((sum, repo) => sum + repo.stars_today, 0)
-  const starsWeek = repos.reduce((sum, repo) => sum + repo.stars_week, 0)
+  // Compute real daily/weekly deltas from snapshots
+  const now = Date.now()
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+  const weekStart = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  let starsToday = 0
+  let starsWeek = 0
+
+  for (const repo of repos) {
+    const repoSnapshots = allSnapshots
+      .filter((s) => s.repo_id === repo.id)
+      .sort((a, b) => Date.parse(a.captured_at) - Date.parse(b.captured_at))
+
+    if (repoSnapshots.length >= 2) {
+      const latest = repoSnapshots[repoSnapshots.length - 1]
+      // Today: delta from snapshot closest to midnight
+      const todayBaseline = findClosestSnapshot(repoSnapshots, todayStart)
+      if (todayBaseline && todayBaseline !== latest) {
+        starsToday += Math.max(0, latest.stars - todayBaseline.stars)
+      } else {
+        starsToday += repo.stars_today
+      }
+      // Week: delta from snapshot closest to 7 days ago
+      const weekBaseline = findClosestSnapshot(repoSnapshots, weekStart)
+      if (weekBaseline && weekBaseline !== latest) {
+        starsWeek += Math.max(0, latest.stars - weekBaseline.stars)
+      } else {
+        starsWeek += repo.stars_week
+      }
+    } else {
+      // No enough snapshots, fall back to repo stored values
+      starsToday += repo.stars_today
+      starsWeek += repo.stars_week
+    }
+  }
+
   const totalStars = repos.reduce((sum, repo) => sum + repo.stars, 0)
   const totalForks = repos.reduce((sum, repo) => sum + repo.forks, 0)
 
-  const allSnapshots = store.metrics_snapshots
   const starsSparkline = buildAggregateSparkline(allSnapshots, "stars")
   const forksSparkline = buildAggregateSparkline(allSnapshots, "forks")
 
@@ -256,6 +316,25 @@ function buildAggregateSparkline(snapshots: Array<{ captured_at: string; stars: 
 
   const sorted = [...byTime.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   return sorted.map(([, val]) => val)
+}
+
+/** Find the snapshot closest to (and not after) the given ISO timestamp */
+function findClosestSnapshot<T extends { captured_at: string }>(
+  snapshots: T[],
+  targetIso: string,
+): T | null {
+  const targetMs = Date.parse(targetIso)
+  let best: T | null = null
+  let bestDiff = Infinity
+
+  for (const s of snapshots) {
+    const diff = Math.abs(Date.parse(s.captured_at) - targetMs)
+    if (diff < bestDiff) {
+      bestDiff = diff
+      best = s
+    }
+  }
+  return best
 }
 
 function createFallbackRepo(owner: string, name: string, existing: RepoRecord | null): RepoRecord {

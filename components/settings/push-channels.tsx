@@ -83,6 +83,7 @@ export function PushChannels() {
   const [saving, setSaving] = useState(false)
   const [testingId, setTestingId] = useState<string | null>(null)
   const [testResults, setTestResults] = useState<Record<string, boolean>>({})
+  const [testErrors, setTestErrors] = useState<Record<string, string>>({})
 
   const fetchChannels = useCallback(async () => {
     try {
@@ -189,6 +190,11 @@ export function PushChannels() {
       delete next[id]
       return next
     })
+    setTestErrors((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
     try {
       const res = await fetch("/api/alerts/channels/test", {
         method: "POST",
@@ -200,7 +206,9 @@ export function PushChannels() {
       if (data.success) {
         toast.success(t.testSuccess)
       } else {
-        toast.error(t.testFailed)
+        const errorMsg = data.error || t.testFailed
+        setTestErrors((prev) => ({ ...prev, [id]: errorMsg }))
+        toast.error(`${t.testFailed}: ${errorMsg}`)
       }
       fetchChannels()
     } catch {
@@ -309,6 +317,9 @@ export function PushChannels() {
                         )}
                       </div>
                     </div>
+                    {testErrors[ch.id] && (
+                      <p className="text-xs text-destructive break-all">{testErrors[ch.id]}</p>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <Button
                         variant="ghost"

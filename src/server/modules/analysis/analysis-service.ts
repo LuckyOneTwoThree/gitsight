@@ -36,9 +36,15 @@ export async function getRepoAnalysis(
 ) {
   const { repo } = await resolveRepo(owner, name)
 
+  // 返回两种 mode 的报告状态，前端按当前 mode 选择显示
+  const fastReports = listAnalysisReports(repo.id, "fast", language).map(toStatusPayload)
+  const deepReports = listAnalysisReports(repo.id, "deep", language).map(toStatusPayload)
+
   return {
     repo,
-    reports: listAnalysisReports(repo.id, mode, language).map(toStatusPayload),
+    reports: mode === "fast" ? fastReports : deepReports,
+    fast_reports: fastReports,
+    deep_reports: deepReports,
   }
 }
 
@@ -319,6 +325,12 @@ function buildFastPrompt(prompt: ReturnType<typeof buildAnalysisPrompt>, section
       ]
     : []
 
+  // Detect language from system prompt to reinforce in fast mode
+  const isChinese = prompt.system.includes("简体中文")
+  const langReminder = isChinese
+    ? "重要提醒：所有自然语言内容必须使用简体中文撰写，不要使用英文。"
+    : ""
+
   return {
     ...prompt,
     user: [
@@ -341,6 +353,7 @@ function buildFastPrompt(prompt: ReturnType<typeof buildAnalysisPrompt>, section
       "  \"The project uses a plugin architecture [source: README]. It has over 10k stars [source: metadata].\"",
       "Only tag factual claims; do not tag section headers, structural labels, or your own instructions.",
       ...reversePrdFastRules,
+      ...(langReminder ? ["", langReminder] : []),
     ].join("\n"),
     temperature: Math.min(prompt.temperature ?? 0.2, 0.12),
   }

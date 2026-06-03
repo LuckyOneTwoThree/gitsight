@@ -88,6 +88,8 @@ export interface ResolveRepoResponse extends ApiRepo {}
 export interface RepoAnalysisResponse {
   repo: ApiRepo
   reports: ApiAnalysisStatus[]
+  fast_reports: ApiAnalysisStatus[]
+  deep_reports: ApiAnalysisStatus[]
 }
 
 export const frontendToBackendSection: Record<string, string> = {
@@ -134,7 +136,7 @@ export function toRepoDetail(repo: ApiRepo): RepoDetail {
 export function applyAnalysisStatuses(
   sections: AnalysisSection[],
   reports: ApiAnalysisStatus[],
-  generatingIds?: Set<string>
+  generatingIds?: Set<string>,
 ): AnalysisSection[] {
   const statusByFrontendId = new Map(
     reports.map((report) => [backendToFrontendSection[report.section_type] || report.section_type, report])

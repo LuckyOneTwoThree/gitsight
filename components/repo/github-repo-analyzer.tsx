@@ -2,49 +2,37 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Github, Loader2, Search } from "lucide-react"
+import { Github, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import type { ResolveRepoResponse } from "@/lib/repo-api"
 import { useApp } from "@/components/app-provider"
+
+function parseGitHubUrl(input: string): { owner: string; name: string } | null {
+  const trimmed = input.trim()
+  // 匹配 github.com/owner/name 或 owner/name
+  const match = trimmed.match(/(?:https?:\/\/github\.com\/)?([^/\s]+)\/([^/\s]+)/)
+  if (!match) return null
+  const [, owner, name] = match
+  // 去掉可能的 .git 后缀
+  const cleanName = name.replace(/\.git$/, "")
+  if (!owner || !cleanName) return null
+  return { owner, name: cleanName }
+}
 
 export function GitHubRepoAnalyzer() {
   const router = useRouter()
   const { dict } = useApp()
-  const t = dict.repo
   const [url, setUrl] = useState("")
-  const [isResolving, setIsResolving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const value = url.trim()
-    if (!value) return
-
-    setIsResolving(true)
-    setError(null)
-
-    try {
-      const response = await fetch("/api/repos/resolve", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url: value }),
-      })
-
-      if (!response.ok) {
-        throw new Error(t.notConfiguredDesc)
-      }
-
-      const repo = (await response.json()) as ResolveRepoResponse
-      router.push(`/repo/${repo.owner}/${repo.name}`)
-    } catch (resolveError) {
-      setError(resolveError instanceof Error ? resolveError.message : dict.common.error)
-    } finally {
-      setIsResolving(false)
+    const parsed = parseGitHubUrl(url)
+    if (parsed) {
+      router.push(`/repo/${parsed.owner}/${parsed.name}`)
     }
   }
+
+  const parsed = parseGitHubUrl(url)
 
   return (
     <section className="rounded-lg border border-border bg-card p-4">
@@ -60,17 +48,11 @@ export function GitHubRepoAnalyzer() {
             className="h-10"
           />
         </div>
-        <Button type="submit" disabled={isResolving || !url.trim()} className="gap-2 md:w-36">
-          {isResolving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Search className="h-4 w-4" />
-          )}
-          {t.generateFast}
+        <Button type="submit" disabled={!parsed} className="gap-2 md:w-36">
+          <Search className="h-4 w-4" />
+          {dict.discover.searchPlaceholder}
         </Button>
       </form>
-      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
     </section>
   )
 }
-

@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Settings
 } from "lucide-react"
+import mermaid from "mermaid"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -45,18 +46,60 @@ interface AnalysisContentProps {
   llmConfigured?: boolean
 }
 
-// Simulated Mermaid diagram rendering placeholder
+// Mermaid diagram renderer
+let mermaidIdCounter = 0
+
 function MermaidPlaceholder({ code }: { code: string }) {
   const { dict } = useApp()
   const t = dict.analysisContent
-  const [isRendering, setIsRendering] = useState(true)
+  const [svg, setSvg] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsRendering(false), 1500)
-    return () => clearTimeout(timer)
+    let cancelled = false
+    // Use a unique ID per render to avoid conflicts with already-rendered diagrams
+    const id = `mermaid-${++mermaidIdCounter}-${Date.now()}`
+
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "neutral",
+      securityLevel: "loose",
+    })
+
+    // Remove any existing SVG element with the same ID (stale from HMR/re-render)
+    try {
+      const existing = document.getElementById(id)
+      if (existing) existing.remove()
+    } catch {}
+
+    mermaid
+      .render(id, code)
+      .then(({ svg: renderedSvg }) => {
+        if (!cancelled) setSvg(renderedSvg)
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Mermaid render failed")
+      })
+
+    return () => { cancelled = true }
   }, [code])
 
-  if (isRendering) {
+  if (error) {
+    return (
+      <div className="my-6 p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-sm text-destructive">
+        <p className="font-medium mb-1">{t.renderingFlowchart}</p>
+        <p className="text-xs">{error}</p>
+        <details className="mt-2">
+          <summary className="text-xs cursor-pointer hover:text-foreground">{t.viewMermaidSource}</summary>
+          <pre className="mt-2 p-3 rounded bg-background text-xs overflow-x-auto">
+            <code className="text-muted-foreground">{code}</code>
+          </pre>
+        </details>
+      </div>
+    )
+  }
+
+  if (!svg) {
     return (
       <div className="my-6 p-8 rounded-lg border border-border bg-muted/30 flex flex-col items-center justify-center min-h-[300px]">
         <Loader2 className="h-8 w-8 text-primary animate-spin mb-3" />
@@ -65,57 +108,9 @@ function MermaidPlaceholder({ code }: { code: string }) {
     )
   }
 
-  // Simplified visual representation of the flowchart
   return (
     <div className="my-6 p-6 rounded-lg border border-border bg-muted/20 overflow-x-auto">
-      <div className="flex flex-col items-center gap-3 min-w-[600px]">
-        {/* Start Node */}
-        <div className="px-4 py-2 rounded-lg bg-success text-success-foreground text-sm font-medium">
-          Dify
-        </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-
-        {/* Decision Node */}
-        <div className="w-32 h-16 rotate-45 border-2 border-primary bg-card flex items-center justify-center">
-          <span className="text-xs -rotate-45">Login?</span>
-        </div>
-
-        {/* Branches */}
-        <div className="flex items-start gap-8">
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-xs text-muted-foreground">{dict.common.no}</span>
-            <div className="px-3 py-1.5 rounded border border-border bg-card text-xs">Register</div>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-xs text-muted-foreground">{dict.common.yes}</span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-          </div>
-        </div>
-
-        <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        <div className="px-4 py-2 rounded-lg border border-border bg-card text-sm">Workspace</div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        <div className="px-4 py-2 rounded-lg border border-border bg-card text-sm">Create App</div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-
-        {/* Type Selection */}
-        <div className="flex items-center gap-4">
-          <div className="px-3 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">Chat</div>
-          <div className="px-3 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">Workflow</div>
-          <div className="px-3 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">Agent</div>
-        </div>
-
-        <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        <div className="px-4 py-2 rounded-lg bg-warning text-warning-foreground text-sm">Debug</div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        <div className="px-4 py-2 rounded-lg bg-info text-info-foreground text-sm">Publish</div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        <div className="px-4 py-2 rounded-lg bg-success text-success-foreground text-sm font-medium">
-          Integrate
-        </div>
-      </div>
-
-      {/* Code Toggle */}
+      <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(svg) }} />
       <details className="mt-4">
         <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
           {t.viewMermaidSource}
@@ -2012,7 +2007,7 @@ export function AnalysisContent({
     return <GeneratingState section={section} />
   }
 
-  if (section.status === "not_generated" && !generatedContent) {
+  if (section.status === "not_generated") {
     return (
       <NotGeneratedState
         section={section}

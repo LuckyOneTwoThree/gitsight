@@ -8,7 +8,7 @@ import {
 } from "@/src/server/modules/analysis/analysis-service"
 import { GitHubRepositoryNotFoundError } from "@/src/server/modules/project/github-client"
 import { type ReportLanguage } from "@/src/server/modules/analysis/prompt-builder"
-import { readConfig } from "@/src/server/lib/desktop-config"
+import { getActiveProvider, isConfigured } from "@/src/server/lib/desktop-config"
 
 interface RouteContext {
   params: Promise<{
@@ -47,8 +47,7 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function POST(request: Request, context: RouteContext) {
-  const config = readConfig()
-  if (!config.llm_api_key) {
+  if (!isConfigured()) {
     return errorResponse("NOT_CONFIGURED", "请先在设置中配置 LLM API Key", 403)
   }
 
@@ -71,11 +70,12 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     const language = parseAnalysisLanguage(lang)
+    const active = getActiveProvider()
     const llmConfig = {
-      provider: config.llm_provider,
-      apiKey: config.llm_api_key,
-      baseUrl: config.llm_base_url,
-      model: config.llm_model,
+      provider: active.provider,
+      apiKey: active.apiKey,
+      baseUrl: active.base_url,
+      model: active.model,
     }
     const result = await startAnalysisReportJob(owner, name, sectionType, language, mode, llmConfig)
     return jsonResponse(result, { status: 202 })
