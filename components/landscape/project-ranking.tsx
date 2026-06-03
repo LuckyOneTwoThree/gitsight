@@ -11,6 +11,7 @@ import {
   TrendingUp,
   GitFork,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 interface LandscapeProject {
   id: string;
@@ -46,6 +47,8 @@ const rankStyles: Record<number, string> = {
 
 export function ProjectRanking({ projects }: ProjectRankingProps) {
   const router = useRouter();
+  const { dict } = useApp();
+  const t = dict.landscape;
 
   const ranked = [...projects]
     .sort((a, b) => b.starsWeek - a.starsWeek || b.stars - a.stars)
@@ -58,10 +61,10 @@ export function ProjectRanking({ projects }: ProjectRankingProps) {
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Trophy className="h-4 w-4 text-amber-500 shrink-0" />
-          <CardTitle className="text-base font-semibold">项目排行榜</CardTitle>
+          <CardTitle className="text-base font-semibold">{t.projectRanking}</CardTitle>
         </div>
         <CardDescription className="text-xs">
-          按周 Star 增量排序 · Top {ranked.length}
+          {t.rankingDesc} · Top {ranked.length}
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">

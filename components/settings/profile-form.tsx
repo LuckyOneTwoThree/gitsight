@@ -26,6 +26,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 interface ProfileData {
   name: string;
@@ -37,6 +38,9 @@ interface ProfileData {
 }
 
 export function ProfileForm() {
+  const { dict } = useApp();
+  const t = dict.profileForm;
+  const c = dict.common;
   const [profile, setProfile] = useState<ProfileData>({
     name: "",
     email: "",
@@ -57,13 +61,13 @@ export function ProfileForm() {
       setError(null);
       try {
         const response = await fetch("/api/auth/profile");
-        if (!response.ok) throw new Error("无法加载个人资料");
+        if (!response.ok) throw new Error(t.saveFailed);
         const payload = (await response.json()) as { profile: ProfileData };
         if (cancelled) return;
         setProfile(payload.profile);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "加载失败");
+          setError(err instanceof Error ? err.message : c.error);
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -95,12 +99,12 @@ export function ProfileForm() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(payload?.error?.message || "保存失败");
+        throw new Error(payload?.error?.message || t.saveFailed);
       }
-      setMessage("个人资料已保存。");
+      setMessage(t.saved);
       setTimeout(() => setMessage(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存失败");
+      setError(err instanceof Error ? err.message : t.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -124,11 +128,11 @@ export function ProfileForm() {
             </div>
             <div>
               <h3 className="text-base font-semibold">
-                {profile.name || "未设置昵称"}
+                {profile.name || t.nickname}
               </h3>
               <p className="text-sm text-muted-foreground">{profile.email}</p>
               <Badge variant="secondary" className="mt-2 text-[10px]">
-                桌面版用户
+                {c.active}
               </Badge>
             </div>
           </div>
@@ -139,7 +143,7 @@ export function ProfileForm() {
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <User className="h-4 w-4 text-primary" />
-            基本信息
+            {t.title}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -153,12 +157,12 @@ export function ProfileForm() {
                 <div className="space-y-2">
                   <Label className="text-sm flex items-center gap-2">
                     <User className="h-3.5 w-3.5 text-muted-foreground" />
-                    显示名称
+                    {t.nickname}
                   </Label>
                   <Input
                     value={profile.name}
                     onChange={(e) => updateField("name", e.target.value)}
-                    placeholder="你的显示名称"
+                    placeholder={t.nicknamePlaceholder}
                     disabled={isLoading}
                   />
                 </div>
@@ -166,7 +170,7 @@ export function ProfileForm() {
                 <div className="space-y-2">
                   <Label className="text-sm flex items-center gap-2">
                     <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                    邮箱地址
+                    {t.email}
                   </Label>
                   <Input
                     value={profile.email}
@@ -178,12 +182,12 @@ export function ProfileForm() {
                 <div className="space-y-2">
                   <Label className="text-sm flex items-center gap-2">
                     <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    公司/组织
+                    {t.bio}
                   </Label>
                   <Input
                     value={profile.company}
                     onChange={(e) => updateField("company", e.target.value)}
-                    placeholder="你的公司或组织（选填）"
+                    placeholder={t.bioPlaceholder}
                     disabled={isLoading}
                   />
                 </div>
@@ -191,7 +195,7 @@ export function ProfileForm() {
                 <div className="space-y-2">
                   <Label className="text-sm flex items-center gap-2">
                     <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
-                    职位角色
+                    {t.bio}
                   </Label>
                   <Select
                     value={profile.role}
@@ -199,15 +203,15 @@ export function ProfileForm() {
                     disabled={isLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="选择角色" />
+                      <SelectValue placeholder={t.bioPlaceholder} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="开发者">开发者</SelectItem>
-                      <SelectItem value="产品经理">产品经理</SelectItem>
-                      <SelectItem value="技术负责人">技术负责人</SelectItem>
-                      <SelectItem value="投资人">投资人</SelectItem>
-                      <SelectItem value="独立开发者">独立开发者</SelectItem>
-                      <SelectItem value="其他">其他</SelectItem>
+                      <SelectItem value="开发者">{t.roleDeveloper}</SelectItem>
+                      <SelectItem value="产品经理">{t.rolePM}</SelectItem>
+                      <SelectItem value="技术负责人">{t.roleTechLead}</SelectItem>
+                      <SelectItem value="投资人">{t.roleInvestor}</SelectItem>
+                      <SelectItem value="独立开发者">{t.roleIndieDev}</SelectItem>
+                      <SelectItem value="其他">{t.roleOther}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -215,7 +219,7 @@ export function ProfileForm() {
                 <div className="space-y-2">
                   <Label className="text-sm flex items-center gap-2">
                     <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                    界面语言
+                    {t.interfaceLanguage}
                   </Label>
                   <Select
                     value={profile.language}
@@ -236,7 +240,7 @@ export function ProfileForm() {
                 <div className="space-y-2">
                   <Label className="text-sm flex items-center gap-2">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    时区
+                    {t.timezone}
                   </Label>
                   <Select
                     value={profile.timezone}
@@ -248,16 +252,16 @@ export function ProfileForm() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Asia/Shanghai">
-                        北京时间 (Asia/Shanghai)
+                        {t.tzBeijing}
                       </SelectItem>
                       <SelectItem value="Asia/Tokyo">
-                        东京时间 (Asia/Tokyo)
+                        {t.tzTokyo}
                       </SelectItem>
                       <SelectItem value="America/New_York">
-                        纽约时间 (America/New_York)
+                        {t.tzNewYork}
                       </SelectItem>
                       <SelectItem value="Europe/London">
-                        伦敦时间 (Europe/London)
+                        {t.tzLondon}
                       </SelectItem>
                       <SelectItem value="UTC">UTC</SelectItem>
                     </SelectContent>
@@ -290,7 +294,7 @@ export function ProfileForm() {
                   ) : (
                     <Save className="h-3.5 w-3.5" />
                   )}
-                  {isSaving ? "保存中..." : "保存更改"}
+                  {isSaving ? t.saving : c.save}
                 </Button>
               </div>
             </>

@@ -112,7 +112,7 @@ const sectionConfigs: Record<AnalysisSectionType, SectionConfig> = {
 
   reverse_prd: {
     role: "You are a principal product strategist, senior PM, and commercial due-diligence analyst. You turn repository evidence into a benchmark-grade Reverse PRD that can be read by founders, PMs, engineering leads, investors, and competitive intelligence teams.",
-    objective: "Produce RepoIntel's flagship Reverse PRD: a product opportunity analysis, reverse-engineered PRD, commercial diligence memo, and role-specific action plan grounded in repository evidence.",
+    objective: "Produce GitSight's flagship Reverse PRD: a product opportunity analysis, reverse-engineered PRD, commercial diligence memo, and role-specific action plan grounded in repository evidence.",
     depthFramework: [
       "Start at the strategy layer: why this product could exist now, what opportunity type it represents, and what ceiling or constraint is visible from the evidence.",
       "Translate the repository into a product system: positioning, target users, JTBD, user journeys, feature hierarchy, MVP loop, and product experience.",

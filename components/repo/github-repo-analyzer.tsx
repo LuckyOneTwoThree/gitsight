@@ -6,9 +6,12 @@ import { Github, Loader2, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { ResolveRepoResponse } from "@/lib/repo-api"
+import { useApp } from "@/components/app-provider"
 
 export function GitHubRepoAnalyzer() {
   const router = useRouter()
+  const { dict } = useApp()
+  const t = dict.repo
   const [url, setUrl] = useState("")
   const [isResolving, setIsResolving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,13 +34,13 @@ export function GitHubRepoAnalyzer() {
       })
 
       if (!response.ok) {
-        throw new Error("无法解析这个 GitHub 仓库，请检查地址是否正确")
+        throw new Error(t.notConfiguredDesc)
       }
 
       const repo = (await response.json()) as ResolveRepoResponse
       router.push(`/repo/${repo.owner}/${repo.name}`)
     } catch (resolveError) {
-      setError(resolveError instanceof Error ? resolveError.message : "解析失败")
+      setError(resolveError instanceof Error ? resolveError.message : dict.common.error)
     } finally {
       setIsResolving(false)
     }
@@ -53,7 +56,7 @@ export function GitHubRepoAnalyzer() {
           <Input
             value={url}
             onChange={(event) => setUrl(event.target.value)}
-            placeholder="粘贴 GitHub 仓库地址，例如 https://github.com/vercel/next.js"
+            placeholder={dict.compare.pasteHint}
             className="h-10"
           />
         </div>
@@ -63,7 +66,7 @@ export function GitHubRepoAnalyzer() {
           ) : (
             <Search className="h-4 w-4" />
           )}
-          开始分析
+          {t.generateFast}
         </Button>
       </form>
       {error && <p className="mt-2 text-sm text-destructive">{error}</p>}

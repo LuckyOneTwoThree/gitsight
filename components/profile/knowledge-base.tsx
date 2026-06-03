@@ -45,6 +45,7 @@ import {
   Star,
   MoreHorizontal,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 interface KnowledgeBaseProps {
   reports: SavedReport[];
@@ -58,6 +59,8 @@ function ReportCard({
   report: SavedReport;
   onRemove: (id: string) => void;
 }) {
+  const { dict } = useApp();
+  const t = dict.knowledgeBase;
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -135,7 +138,7 @@ function ReportCard({
           <Link href={`/repo/${report.repoOwner}/${report.repoName}`}>
             <Button size="sm" className="gap-1.5">
               <ExternalLink className="h-3.5 w-3.5" />
-              查看报告
+              {t.categories}
             </Button>
           </Link>
         </div>
@@ -151,6 +154,8 @@ function ComparisonCard({
   comparison: ComparisonHistory;
   onRemove: (id: string) => void;
 }) {
+  const { dict } = useApp();
+  const t = dict.knowledgeBase;
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -170,7 +175,7 @@ function ComparisonCard({
             className="text-[10px] border-primary/20 text-primary"
           >
             <GitCompare className="h-3 w-3 mr-1" />
-            {comparison.projectCount} 个项目
+            {comparison.projectCount} {dict.landscape.totalProjects}
           </Badge>
           <Button
             variant="ghost"
@@ -230,7 +235,7 @@ function ComparisonCard({
           <Link href="/compare">
             <Button size="sm" className="gap-1.5">
               <GitCompare className="h-3.5 w-3.5" />
-              查看对比
+              {dict.compare.title}
             </Button>
           </Link>
         </div>
@@ -240,6 +245,8 @@ function ComparisonCard({
 }
 
 export function KnowledgeBase({ reports, comparisons }: KnowledgeBaseProps) {
+  const { dict } = useApp();
+  const t = dict.knowledgeBase;
   const [activeTab, setActiveTab] = useState("reports");
   const [savedReports, setSavedReports] = useState(reports);
   const [savedComparisons, setSavedComparisons] = useState(comparisons);
@@ -261,9 +268,9 @@ export function KnowledgeBase({ reports, comparisons }: KnowledgeBaseProps) {
               <Bookmark className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base font-semibold">知识库管理</CardTitle>
+              <CardTitle className="text-base font-semibold">{t.title}</CardTitle>
               <p className="text-xs text-muted-foreground">
-                已收藏的报告与历史对比矩阵
+                {t.noResults}
               </p>
             </div>
           </div>
@@ -271,14 +278,14 @@ export function KnowledgeBase({ reports, comparisons }: KnowledgeBaseProps) {
             <TabsList className="bg-muted/50">
               <TabsTrigger value="reports" className="gap-2 text-xs">
                 <FileText className="h-3.5 w-3.5" />
-                收藏报告
+                {t.categories}
                 <Badge variant="secondary" className="text-[9px] ml-1">
                   {savedReports.length}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="comparisons" className="gap-2 text-xs">
                 <GitCompare className="h-3.5 w-3.5" />
-                对比历史
+                {t.recentEntries}
                 <Badge variant="secondary" className="text-[9px] ml-1">
                   {savedComparisons.length}
                 </Badge>
@@ -303,9 +310,9 @@ export function KnowledgeBase({ reports, comparisons }: KnowledgeBaseProps) {
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <FileText className="h-10 w-10 mb-3 opacity-40" />
-                <p className="text-sm">暂无收藏的报告</p>
+                <p className="text-sm">{t.noResults}</p>
                 <p className="text-xs mt-1">
-                  在项目详情页点击收藏按钮即可添加
+                  {t.searchPlaceholder}
                 </p>
               </div>
             )}
@@ -325,9 +332,9 @@ export function KnowledgeBase({ reports, comparisons }: KnowledgeBaseProps) {
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <GitCompare className="h-10 w-10 mb-3 opacity-40" />
-                <p className="text-sm">暂无对比历史</p>
+                <p className="text-sm">{t.noResults}</p>
                 <p className="text-xs mt-1">
-                  在对比工作台生成矩阵后即可保存
+                  {t.searchPlaceholder}
                 </p>
               </div>
             )}

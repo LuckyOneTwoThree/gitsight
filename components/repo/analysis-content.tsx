@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import DOMPurify from "dompurify"
+import { useApp } from "@/components/app-provider"
+import type { Dictionary } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 import {
   Download,
@@ -24,8 +26,7 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
-import type { AnalysisSection } from "@/lib/mock-repo-data"
-import { mockAnalysisContent } from "@/lib/mock-repo-data"
+import type { AnalysisSection } from "@/lib/analysis-sections"
 import { toast } from "sonner"
 
 interface AnalysisContentProps {
@@ -46,6 +47,8 @@ interface AnalysisContentProps {
 
 // Simulated Mermaid diagram rendering placeholder
 function MermaidPlaceholder({ code }: { code: string }) {
+  const { dict } = useApp()
+  const t = dict.analysisContent
   const [isRendering, setIsRendering] = useState(true)
 
   useEffect(() => {
@@ -57,7 +60,7 @@ function MermaidPlaceholder({ code }: { code: string }) {
     return (
       <div className="my-6 p-8 rounded-lg border border-border bg-muted/30 flex flex-col items-center justify-center min-h-[300px]">
         <Loader2 className="h-8 w-8 text-primary animate-spin mb-3" />
-        <p className="text-sm text-muted-foreground">正在渲染流程图...</p>
+        <p className="text-sm text-muted-foreground">{t.renderingFlowchart}</p>
       </div>
     )
   }
@@ -68,54 +71,54 @@ function MermaidPlaceholder({ code }: { code: string }) {
       <div className="flex flex-col items-center gap-3 min-w-[600px]">
         {/* Start Node */}
         <div className="px-4 py-2 rounded-lg bg-success text-success-foreground text-sm font-medium">
-          用户访问 Dify
+          Dify
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        
+
         {/* Decision Node */}
         <div className="w-32 h-16 rotate-45 border-2 border-primary bg-card flex items-center justify-center">
-          <span className="text-xs -rotate-45">已有账号?</span>
+          <span className="text-xs -rotate-45">Login?</span>
         </div>
-        
+
         {/* Branches */}
         <div className="flex items-start gap-8">
           <div className="flex flex-col items-center gap-2">
-            <span className="text-xs text-muted-foreground">否</span>
-            <div className="px-3 py-1.5 rounded border border-border bg-card text-xs">注册/登录</div>
+            <span className="text-xs text-muted-foreground">{dict.common.no}</span>
+            <div className="px-3 py-1.5 rounded border border-border bg-card text-xs">Register</div>
           </div>
           <div className="flex flex-col items-center gap-2">
-            <span className="text-xs text-muted-foreground">是</span>
+            <span className="text-xs text-muted-foreground">{dict.common.yes}</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
           </div>
         </div>
-        
+
         <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        <div className="px-4 py-2 rounded-lg border border-border bg-card text-sm">进入工作台</div>
+        <div className="px-4 py-2 rounded-lg border border-border bg-card text-sm">Workspace</div>
         <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        <div className="px-4 py-2 rounded-lg border border-border bg-card text-sm">创建新应用</div>
+        <div className="px-4 py-2 rounded-lg border border-border bg-card text-sm">Create App</div>
         <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        
+
         {/* Type Selection */}
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">聊天助手</div>
-          <div className="px-3 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">工作流</div>
+          <div className="px-3 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">Chat</div>
+          <div className="px-3 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">Workflow</div>
           <div className="px-3 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs">Agent</div>
         </div>
-        
+
         <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        <div className="px-4 py-2 rounded-lg bg-warning text-warning-foreground text-sm">测试与调试</div>
+        <div className="px-4 py-2 rounded-lg bg-warning text-warning-foreground text-sm">Debug</div>
         <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
-        <div className="px-4 py-2 rounded-lg bg-info text-info-foreground text-sm">发布应用</div>
+        <div className="px-4 py-2 rounded-lg bg-info text-info-foreground text-sm">Publish</div>
         <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
         <div className="px-4 py-2 rounded-lg bg-success text-success-foreground text-sm font-medium">
-          集成到业务系统
+          Integrate
         </div>
       </div>
-      
+
       {/* Code Toggle */}
       <details className="mt-4">
         <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-          查看 Mermaid 源码
+          {t.viewMermaidSource}
         </summary>
         <pre className="mt-2 p-3 rounded bg-background text-xs overflow-x-auto">
           <code className="text-muted-foreground">{code}</code>
@@ -274,6 +277,8 @@ function MarkdownContent({ content }: { content: string }) {
 }
 
 function StructuredReportContent({ content, reportLang = "zh" }: { content: Record<string, unknown>; reportLang?: "zh" | "en" }) {
+  const { dict } = useApp()
+  const t = dict.analysisContent
   const businessEntries = Object.entries(content)
     .filter(([key]) => key !== "_meta" && key !== "mermaid" && key !== "title")
 
@@ -284,13 +289,11 @@ function StructuredReportContent({ content, reportLang = "zh" }: { content: Reco
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle className="h-4 w-4 text-yellow-500" />
             <span className="text-sm font-medium text-yellow-500">
-              {reportLang === "zh" ? "报告内容不完整" : "Incomplete Report"}
+              {t.incompleteReport}
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            {reportLang === "zh"
-              ? "模型生成的报告内容不完整，仅包含元数据信息。请尝试重新生成，或切换到深度模式获取更完整的分析。"
-              : "The model generated an incomplete report with only metadata. Please try regenerating, or switch to deep mode for a more complete analysis."}
+            {t.incompleteReportDesc}
           </p>
         </div>
       )}
@@ -305,7 +308,7 @@ function StructuredReportContent({ content, reportLang = "zh" }: { content: Reco
       {"_meta" in content && (
         <section className="rounded-lg border border-border bg-muted/30 p-4">
           <h3 className="mb-2 text-sm font-semibold text-foreground">
-            {reportLang === "zh" ? "生成上下文" : "Generation Context"}
+            {t.generationContext}
           </h3>
           <ReportValue value={summarizeReportMeta(content._meta, reportLang)} fieldKey="_meta" reportLang={reportLang} />
         </section>
@@ -363,6 +366,8 @@ function summarizeReportMeta(meta: unknown, reportLang: "zh" | "en" = "zh") {
 }
 
 function ReportValue({ value, fieldKey, reportLang = "zh" }: { value: unknown; fieldKey?: string; reportLang?: "zh" | "en" }) {
+  const { dict } = useApp()
+  const t = dict.analysisContent
   if (value === null || value === undefined) {
     return <p className="text-sm text-muted-foreground italic">—</p>
   }
@@ -377,7 +382,7 @@ function ReportValue({ value, fieldKey, reportLang = "zh" }: { value: unknown; f
   if (typeof value === "boolean") {
     return (
       <Badge variant={value ? "default" : "secondary"} className="text-xs">
-        {reportLang === "zh" ? (value ? "是" : "否") : value ? "Yes" : "No"}
+        {value ? dict.common.yes : dict.common.no}
       </Badge>
     )
   }
@@ -421,7 +426,7 @@ function ReportValue({ value, fieldKey, reportLang = "zh" }: { value: unknown; f
 
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      return <p className="text-sm text-muted-foreground italic">{reportLang === "zh" ? "无数据" : "No data"}</p>
+      return <p className="text-sm text-muted-foreground italic">{t.noData}</p>
     }
 
     const isStringArray = value.every((item) => typeof item === "string")
@@ -559,6 +564,8 @@ function ReportValue({ value, fieldKey, reportLang = "zh" }: { value: unknown; f
 }
 
 function InlineSourceContent({ text }: { text: string }) {
+  const { dict } = useApp()
+  const t = dict.analysisContent
   const parts = text.split(/(\[source:\s*\w+\])/g)
   return (
     <>
@@ -573,10 +580,10 @@ function InlineSourceContent({ text }: { text: string }) {
             unknown: "bg-muted text-muted-foreground border-border",
           }
           const labelMap: Record<string, string> = {
-            readme: "README",
-            metadata: "元数据",
-            inferred: "推断",
-            unknown: "未知",
+            readme: t.sourceReadme,
+            metadata: t.sourceMetadata,
+            inferred: t.sourceInferred,
+            unknown: t.sourceUnknown,
           }
           return (
             <Badge key={i} variant="outline" className={cn("text-[10px] px-1.5 py-0 mx-0.5", colorMap[sourceType] || colorMap.unknown)}>
@@ -615,10 +622,10 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 function DifficultyBadge({ difficulty, reportLang = "zh" }: { difficulty: string; reportLang?: "zh" | "en" }) {
+  const { dict } = useApp()
+  const t = dict.analysisContent
   const colorClass = difficulty === "beginner" ? "bg-green-500/10 text-green-500 border-green-500/20" : difficulty === "intermediate" ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"
-  const label = reportLang === "zh"
-    ? (difficulty === "beginner" ? "入门" : difficulty === "intermediate" ? "中级" : "高级")
-    : (difficulty === "beginner" ? "Beginner" : difficulty === "intermediate" ? "Intermediate" : "Advanced")
+  const label = difficulty === "beginner" ? t.difficultyBeginner : difficulty === "intermediate" ? t.difficultyIntermediate : t.difficultyAdvanced
   return <Badge className={cn("text-xs", colorClass)}>{label}</Badge>
 }
 
@@ -1467,6 +1474,7 @@ function buildReportMarkdown({
   reportLang,
   generatedBy,
   generatedAt,
+  t,
 }: {
   content?: Record<string, unknown> | null
   fallbackMarkdown?: string
@@ -1476,13 +1484,14 @@ function buildReportMarkdown({
   reportLang: "zh" | "en"
   generatedBy?: string | null
   generatedAt?: string | null
+  t: Dictionary["analysisContent"]
 }) {
   const lines: string[] = [`# ${title}`, ""]
 
-  lines.push(`> ${reportLang === "zh" ? "仓库" : "Repository"}: ${repoName}`)
-  lines.push(`> ${reportLang === "zh" ? "报告类型" : "Report Type"}: ${sectionName}`)
-  if (generatedBy) lines.push(`> ${reportLang === "zh" ? "生成模型" : "Generated By"}: ${generatedBy}`)
-  if (generatedAt) lines.push(`> ${reportLang === "zh" ? "生成时间" : "Generated At"}: ${generatedAt}`)
+  lines.push(`> ${t.repository}: ${repoName}`)
+  lines.push(`> ${t.reportType}: ${sectionName}`)
+  if (generatedBy) lines.push(`> ${t.generatedBy}: ${generatedBy}`)
+  if (generatedAt) lines.push(`> ${t.generatedAt}: ${generatedAt}`)
   lines.push("")
 
   if (!content) {
@@ -1496,7 +1505,7 @@ function buildReportMarkdown({
 
     lines.push(`## ${formatReportKey(key, reportLang)}`)
     lines.push("")
-    lines.push(...valueToMarkdown(value, reportLang, 0))
+    lines.push(...valueToMarkdown(value, reportLang, 0, t))
     lines.push("")
   }
 
@@ -1510,18 +1519,18 @@ function buildReportMarkdown({
   }
 
   if (content._meta) {
-    lines.push(`## ${reportLang === "zh" ? "生成上下文" : "Generation Context"}`)
+    lines.push(`## ${t.generationContext}`)
     lines.push("")
-    lines.push(...valueToMarkdown(summarizeReportMeta(content._meta, reportLang), reportLang, 0))
+    lines.push(...valueToMarkdown(summarizeReportMeta(content._meta, reportLang), reportLang, 0, t))
     lines.push("")
   }
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n"
 }
 
-function valueToMarkdown(value: unknown, reportLang: "zh" | "en", depth: number): string[] {
+function valueToMarkdown(value: unknown, reportLang: "zh" | "en", depth: number, t: Dictionary["analysisContent"]): string[] {
   if (value === null || value === undefined || value === "") {
-    return [reportLang === "zh" ? "证据不足，无法确认" : "Insufficient evidence, unable to confirm"]
+    return [t.insufficientEvidence]
   }
 
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
@@ -1529,7 +1538,7 @@ function valueToMarkdown(value: unknown, reportLang: "zh" | "en", depth: number)
   }
 
   if (Array.isArray(value)) {
-    if (value.length === 0) return [reportLang === "zh" ? "暂无数据" : "No data"]
+    if (value.length === 0) return [t.noData]
 
     const lines: string[] = []
     for (const item of value) {
@@ -1539,7 +1548,7 @@ function valueToMarkdown(value: unknown, reportLang: "zh" | "en", depth: number)
         lines.push(`${"  ".repeat(depth)}- ${label}`)
         for (const [key, nestedValue] of Object.entries(record)) {
           if (isMarkdownLabelKey(key)) continue
-          const nestedLines = valueToMarkdown(nestedValue, reportLang, depth + 1)
+          const nestedLines = valueToMarkdown(nestedValue, reportLang, depth + 1, t)
           lines.push(`${"  ".repeat(depth + 1)}- **${formatReportKey(key, reportLang)}**: ${nestedLines[0] || ""}`)
           lines.push(...nestedLines.slice(1).map((line) => `${"  ".repeat(depth + 2)}${line}`))
         }
@@ -1553,11 +1562,11 @@ function valueToMarkdown(value: unknown, reportLang: "zh" | "en", depth: number)
   if (typeof value === "object") {
     const lines: string[] = []
     for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
-      const nestedLines = valueToMarkdown(nestedValue, reportLang, depth + 1)
+      const nestedLines = valueToMarkdown(nestedValue, reportLang, depth + 1, t)
       lines.push(`${"  ".repeat(depth)}- **${formatReportKey(key, reportLang)}**: ${nestedLines[0] || ""}`)
       lines.push(...nestedLines.slice(1).map((line) => `${"  ".repeat(depth + 1)}${line}`))
     }
-    return lines.length > 0 ? lines : [reportLang === "zh" ? "暂无数据" : "No data"]
+    return lines.length > 0 ? lines : [t.noData]
   }
 
   return [String(value)]
@@ -1594,17 +1603,19 @@ function sanitizeFilename(value: string) {
 }
 
 function LiveGenerationState({ section }: { section: AnalysisSection }) {
+  const { dict } = useApp()
+  const t = dict.analysisContent
   const progress = section.progress || 8
 
   const stages = [
-    { label: "解析 GitHub 仓库地址", completed: progress >= 10 },
-    { label: "拉取仓库元数据", completed: progress >= 24 },
-    { label: "采集 README、目录树和配置文件", completed: progress >= 42 },
-    { label: "整理模型分析上下文", completed: progress >= 58 },
-    { label: "调用 AI 模型生成结构化报告", completed: progress >= 76 },
-    { label: "缓存报告并刷新页面展示", completed: progress >= 94 },
+    { label: t.stage1, completed: progress >= 10 },
+    { label: t.stage2, completed: progress >= 24 },
+    { label: t.stage3, completed: progress >= 42 },
+    { label: t.stage4, completed: progress >= 58 },
+    { label: t.stage5, completed: progress >= 76 },
+    { label: t.stage6, completed: progress >= 94 },
   ]
-  const activeStage = stages.find((stage) => !stage.completed)?.label || "正在完成报告展示"
+  const activeStage = stages.find((stage) => !stage.completed)?.label || t.completingReport
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-auto p-8">
@@ -1637,7 +1648,7 @@ function LiveGenerationState({ section }: { section: AnalysisSection }) {
             </div>
           </div>
           <h3 className="mb-1 text-lg font-medium text-foreground">
-            正在生成 {section.name}
+            {t.generating} {section.name}
           </h3>
           <p className="text-sm text-muted-foreground">{activeStage}</p>
         </div>
@@ -1675,7 +1686,7 @@ function LiveGenerationState({ section }: { section: AnalysisSection }) {
         <div className="mt-6 rounded-lg border border-border bg-muted/50 p-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>预计剩余时间取决于仓库大小和模型响应速度</span>
+            <span>{t.estimatedTime}</span>
           </div>
         </div>
       </div>
@@ -1685,14 +1696,16 @@ function LiveGenerationState({ section }: { section: AnalysisSection }) {
 
 // Generation Progress Component
 function GeneratingState({ section }: { section: AnalysisSection }) {
+  const { dict } = useApp()
+  const t = dict.analysisContent
   const progress = section.progress || 0
   const stages = [
-    { label: "获取仓库数据", completed: progress >= 20 },
-    { label: "解析 README 文档", completed: progress >= 35 },
-    { label: "分析目录结构", completed: progress >= 50 },
-    { label: "提取关键信息", completed: progress >= 65 },
-    { label: "生成分析报告", completed: progress >= 80 },
-    { label: "格式化输出", completed: progress >= 95 }
+    { label: t.genStage1, completed: progress >= 20 },
+    { label: t.genStage2, completed: progress >= 35 },
+    { label: t.genStage3, completed: progress >= 50 },
+    { label: t.genStage4, completed: progress >= 65 },
+    { label: t.genStage5, completed: progress >= 80 },
+    { label: t.genStage6, completed: progress >= 95 }
   ]
 
   return (
@@ -1726,7 +1739,7 @@ function GeneratingState({ section }: { section: AnalysisSection }) {
               <span className="text-2xl font-bold text-foreground">{progress}%</span>
             </div>
           </div>
-          <h3 className="text-lg font-medium text-foreground mb-1">正在生成分析报告</h3>
+          <h3 className="text-lg font-medium text-foreground mb-1">{t.generatingReport}</h3>
           <p className="text-sm text-muted-foreground">{section.progressStage}</p>
         </div>
 
@@ -1761,7 +1774,7 @@ function GeneratingState({ section }: { section: AnalysisSection }) {
         <div className="mt-6 p-3 rounded-lg bg-muted/50 border border-border">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>预计剩余时间: 约 30 秒</span>
+            <span>{t.estimatedTimeAbout}</span>
           </div>
         </div>
       </div>
@@ -1776,6 +1789,8 @@ function ReportModeSwitch({
   reportMode: "fast" | "deep"
   onReportModeChange?: (mode: "fast" | "deep") => void
 }) {
+  const { dict } = useApp()
+  const t = dict.analysisContent
   return (
     <div className="inline-flex h-8 shrink-0 items-center rounded-md border border-border bg-input p-0.5">
       <button
@@ -1788,7 +1803,7 @@ function ReportModeSwitch({
         )}
         onClick={() => onReportModeChange?.("fast")}
       >
-        快速版
+        {t.fastMode}
       </button>
       <button
         type="button"
@@ -1800,7 +1815,7 @@ function ReportModeSwitch({
         )}
         onClick={() => onReportModeChange?.("deep")}
       >
-        深度版
+        {t.deepMode}
       </button>
     </div>
   )
@@ -1828,6 +1843,9 @@ function NotGeneratedState({
   onReportModeChange?: (mode: "fast" | "deep") => void
   llmConfigured?: boolean
 }) {
+  const { dict } = useApp()
+  const t = dict.analysisContent
+
   if (!llmConfigured) {
     return (
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-auto p-8">
@@ -1836,10 +1854,10 @@ function NotGeneratedState({
             <Settings className="h-8 w-8 text-muted-foreground" />
           </div>
           <h3 className="text-xl font-semibold text-foreground mb-2">
-            未配置 LLM API Key
+            {t.notConfiguredTitle}
           </h3>
           <p className="text-sm text-muted-foreground mb-6">
-            生成分析报告需要先配置 LLM API Key，请前往设置页面完成配置。
+            {t.notConfiguredDesc}
           </p>
           <Button
             className="w-full gap-2"
@@ -1847,7 +1865,7 @@ function NotGeneratedState({
             onClick={() => { window.location.href = "/settings" }}
           >
             <Settings className="h-4 w-4" />
-            前往设置
+            {t.goToSettings}
           </Button>
         </div>
       </div>
@@ -1863,10 +1881,10 @@ function NotGeneratedState({
         </div>
 
         <h3 className="text-xl font-semibold text-foreground mb-2">
-          生成 {section.name}
+          {t.generateSection} {section.name}
         </h3>
         <p className="text-sm text-muted-foreground mb-6">
-          AI 将{reportMode === "fast" ? "快速提炼" : "深度分析"} <span className="text-foreground font-medium">{repoName}</span> 的{section.description.toLowerCase()}
+          AI {reportMode === "fast" ? t.aiWillFast : t.aiWillDeep} <span className="text-foreground font-medium">{repoName}</span> {section.description.toLowerCase()}
         </p>
 
         {/* Time & Quota Info */}
@@ -1877,13 +1895,13 @@ function NotGeneratedState({
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Sparkles className="h-4 w-4" />
-            <span>AI 驱动生成</span>
+            <span>{t.aiDriven}</span>
           </div>
         </div>
 
         {/* Language Selector */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          <span className="text-xs text-muted-foreground">输出语言</span>
+          <span className="text-xs text-muted-foreground">{t.outputLang}</span>
           <div className="inline-flex rounded-lg border border-border p-0.5">
             <button
               type="button"
@@ -1913,7 +1931,7 @@ function NotGeneratedState({
         </div>
 
         <div className="flex items-center justify-center gap-2 mb-6">
-          <span className="text-xs text-muted-foreground">分析模式</span>
+          <span className="text-xs text-muted-foreground">{t.analysisMode}</span>
           <ReportModeSwitch reportMode={reportMode} onReportModeChange={onReportModeChange} />
         </div>
 
@@ -1929,7 +1947,7 @@ function NotGeneratedState({
           ) : (
             <Sparkles className="h-4 w-4" />
           )}
-          {reportMode === "fast" ? "生成快速报告" : "生成深度报告"}
+          {reportMode === "fast" ? t.generateFast : t.generateDeep}
         </Button>
       </div>
     </div>
@@ -1952,20 +1970,22 @@ export function AnalysisContent({
   reportId,
   llmConfigured = true,
 }: AnalysisContentProps) {
-  const content = mockAnalysisContent[section.id]
+  const { dict } = useApp()
+  const t = dict.analysisContent
   const reportTitle = typeof generatedContent?.title === "string"
     ? generatedContent.title
-    : content?.title || section.name
+    : section.name
   const handleDownloadMarkdown = () => {
     const markdown = buildReportMarkdown({
       content: generatedContent,
-      fallbackMarkdown: content?.content,
+      fallbackMarkdown: undefined,
       title: reportTitle,
       sectionName: section.name,
       repoName,
       reportLang,
       generatedBy,
       generatedAt,
+      t,
     })
     const filename = `${sanitizeFilename(repoName)}-${sanitizeFilename(section.id)}-${reportMode}-${reportLang}.md`
     downloadMarkdownFile(markdown, filename)
@@ -1973,15 +1993,15 @@ export function AnalysisContent({
 
   const handleShare = useCallback(() => {
     if (!reportId) {
-      toast.error("报告尚未生成，无法分享")
+      toast.error(t.reportNotGenerated)
       return
     }
     const url = `${window.location.origin}/public/report/${reportId}`
     navigator.clipboard.writeText(url).then(
-      () => toast.success("公开链接已复制到剪贴板"),
-      () => toast.error("复制失败，请手动复制链接")
+      () => toast.success(t.publicLinkCopied),
+      () => toast.error(t.copyFailed)
     )
-  }, [reportId])
+  }, [reportId, t.reportNotGenerated, t.publicLinkCopied, t.copyFailed])
 
   // Handle different states
   if (isGenerating) {
@@ -2021,10 +2041,10 @@ export function AnalysisContent({
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="outline" className="text-[10px] gap-1">
                 <CheckCircle2 className="h-3 w-3 text-success" />
-                已缓存
+                {t.cached}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                更新于 {content?.lastUpdated || section.cachedAt}
+                {t.updatedAt} {section.cachedAt}
               </span>
             </div>
           )}
@@ -2035,7 +2055,7 @@ export function AnalysisContent({
           <ReportModeSwitch reportMode={reportMode} onReportModeChange={onReportModeChange} />
           <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
             <RefreshCw className="h-4 w-4" />
-            <span className="text-xs">重新生成</span>
+            <span className="text-xs">{t.regenerate}</span>
           </Button>
           <Button
             variant="ghost"
@@ -2044,11 +2064,11 @@ export function AnalysisContent({
             onClick={handleDownloadMarkdown}
           >
             <Download className="h-4 w-4" />
-            <span className="text-xs">导出 MD</span>
+            <span className="text-xs">{t.exportMd}</span>
           </Button>
           <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={handleShare}>
             <Share2 className="h-4 w-4" />
-            <span className="text-xs">分享</span>
+            <span className="text-xs">{t.share}</span>
           </Button>
         </div>
       </div>
@@ -2058,30 +2078,33 @@ export function AnalysisContent({
         <div className="max-w-4xl p-4 md:p-6 pb-24">
           {generatedContent ? (
             <StructuredReportContent content={generatedContent} reportLang={reportLang} />
-          ) : content?.content && (
-            <MarkdownContent content={content.content} />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <p className="text-sm">{t.reportNotAvailable}</p>
+              <p className="text-xs mt-1">{t.tryRegenerate}</p>
+            </div>
           )}
 
-          {(typeof generatedContent?.mermaid === "string" || content?.mermaid) && (
-            <MermaidPlaceholder code={(generatedContent?.mermaid as string) || content!.mermaid!} />
+          {typeof generatedContent?.mermaid === "string" && (
+            <MermaidPlaceholder code={generatedContent.mermaid} />
           )}
 
           {/* Feedback Section */}
           <Separator className="my-8" />
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm text-muted-foreground">这份报告对你有帮助吗？</p>
+            <p className="text-sm text-muted-foreground">{t.helpfulQuestion}</p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="gap-1.5">
                 <ThumbsUp className="h-4 w-4" />
-                <span>有帮助</span>
+                <span>{t.helpful}</span>
               </Button>
               <Button variant="outline" size="sm" className="gap-1.5">
                 <ThumbsDown className="h-4 w-4" />
-                <span>需改进</span>
+                <span>{t.needsImprovement}</span>
               </Button>
               <Button variant="outline" size="sm" className="gap-1.5">
                 <MessageSquare className="h-4 w-4" />
-                <span>反馈纠错</span>
+                <span>{t.feedbackCorrection}</span>
               </Button>
             </div>
           </div>
@@ -2092,9 +2115,8 @@ export function AnalysisContent({
               <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm text-muted-foreground">
-                  <strong className="text-foreground">AI 生成内容声明：</strong>
-                  以上分析由 AI 自动生成，可能存在不准确之处。请结合原始仓库文档进行验证。
-                  如发现错误，欢迎点击「反馈纠错」帮助我们改进。
+                  <strong className="text-foreground">{t.aiDisclaimerTitle}</strong>
+                  {t.aiDisclaimer}
                 </p>
               </div>
             </div>

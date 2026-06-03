@@ -1,5 +1,7 @@
 import { fetchGitHubTrending, trendingRepoToRepoRecord } from "@/src/server/modules/project/github-trending"
 import { findRepoByFullName, upsertRepo } from "@/src/server/modules/project/repo-store"
+import { fetchGitHubRepo } from "@/src/server/modules/project/github-client"
+import { getServerEnv } from "@/src/server/lib/env"
 import { executeAllActiveRules } from "@/src/server/modules/alerts/alert-executor"
 
 let dailyTimer: ReturnType<typeof setInterval> | null = null
@@ -16,6 +18,7 @@ export async function syncTrending(since: "daily" | "weekly" | "monthly") {
   try {
     console.log(`[Scheduler] Starting ${since} trending sync...`)
     const trendingRepos = await fetchGitHubTrending(since)
+    const hasToken = !!getServerEnv().githubToken
 
     let synced = 0
     for (const trending of trendingRepos) {
@@ -23,6 +26,31 @@ export async function syncTrending(since: "daily" | "weekly" | "monthly") {
       const record = trendingRepoToRepoRecord(trending, existing, since)
       await upsertRepo(record)
       synced++
+
+      // For new repos without forks data, enrich from GitHub API if token is available
+      if (!existing && hasToken && record.forks === 0) {
+        try {
+          const [owner, name] = trending.fullName.split("/")
+          if (owner && name) {
+            const fullData = await fetchGitHubRepo(owner, name)
+            await upsertRepo({
+              ...record,
+              forks: fullData.forks,
+              open_issues_count: fullData.open_issues_count,
+              watchers: fullData.watchers,
+              license: fullData.license,
+              contributors_count: fullData.contributors_count,
+              homepage: fullData.homepage,
+              is_archived: fullData.is_archived,
+              is_fork: fullData.is_fork,
+              default_branch: fullData.default_branch,
+              description: fullData.description || record.description,
+            })
+          }
+        } catch {
+          // enrichment is optional, don't fail the sync
+        }
+      }
     }
 
     const result = { since, synced, total: trendingRepos.length }

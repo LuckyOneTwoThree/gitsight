@@ -100,7 +100,7 @@ export async function testPushChannel(channel: PushChannel): Promise<boolean> {
     frequency: "instant",
     matches: [{
       fullName: "example-org/example-repo",
-      description: "RepoIntel 测试推送消息",
+      description: "GitSight 测试推送消息",
       language: "TypeScript",
       stars: 5000,
       reason: "这是一条测试消息",
@@ -115,7 +115,7 @@ export async function testPushChannel(channel: PushChannel): Promise<boolean> {
 
 function buildMarkdownText(payload: PushPayload): string {
   const lines = [
-    `**📊 RepoIntel 情报速递**`,
+    `**📊 GitSight 情报速递**`,
     `━━━━━━━━━━━━━━━━`,
     `规则: ${payload.ruleName}`,
     `频率: ${payload.frequency} | 匹配: ${payload.totalMatches} 个项目`,
@@ -135,7 +135,7 @@ function buildMarkdownText(payload: PushPayload): string {
 
 function buildPlainText(payload: PushPayload): string {
   const lines = [
-    `📊 RepoIntel 情报速递`,
+    `📊 GitSight 情报速递`,
     `规则: ${payload.ruleName} | 频率: ${payload.frequency} | 匹配: ${payload.totalMatches}`,
     ``,
   ]
@@ -188,11 +188,11 @@ async function sendGroupBotWebhook(url: string, type: string, payload: PushPaylo
     const markdown = buildMarkdownText(payload)
     let body: Record<string, unknown>
     if (type === "feishu") {
-      body = { msg_type: "interactive", card: { header: { title: { tag: "plain_text", content: "📊 RepoIntel 情报速递" } }, elements: [{ tag: "markdown", content: markdown }] } }
+      body = { msg_type: "interactive", card: { header: { title: { tag: "plain_text", content: "📊 GitSight 情报速递" } }, elements: [{ tag: "markdown", content: markdown }] } }
     } else if (type === "wecom") {
       body = { msgtype: "markdown", markdown: { content: markdown } }
     } else {
-      body = { msgtype: "markdown", markdown: { title: "RepoIntel 情报速递", text: markdown } }
+      body = { msgtype: "markdown", markdown: { title: "GitSight 情报速递", text: markdown } }
     }
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
@@ -214,7 +214,7 @@ async function sendBark(key: string, server: string | undefined, payload: PushPa
   try {
     const baseUrl = server || "https://api.day.app"
     const text = buildPlainText(payload)
-    const url = `${baseUrl}/${encodeURIComponent(key)}/${encodeURIComponent("RepoIntel 情报速递")}/${encodeURIComponent(text)}`
+    const url = `${baseUrl}/${encodeURIComponent(key)}/${encodeURIComponent("GitSight 情报速递")}/${encodeURIComponent(text)}`
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
     const response = await fetch(url, { signal: controller.signal })
@@ -230,7 +230,7 @@ async function sendPushPlus(token: string, payload: PushPayload): Promise<boolea
   try {
     const body = {
       token,
-      title: `📊 RepoIntel 情报速递 - ${payload.ruleName}`,
+      title: `📊 GitSight 情报速递 - ${payload.ruleName}`,
       content: buildMarkdownText(payload),
       template: "markdown",
     }
@@ -279,7 +279,7 @@ async function sendDiscord(webhookUrl: string, payload: PushPayload): Promise<bo
       lines.push(`... and ${payload.totalMatches - payload.matches.length} more`)
     }
     const body = {
-      username: "RepoIntel",
+      username: "GitSight",
       embeds: [{
         title: `📊 情报速递 - ${payload.ruleName}`,
         description: lines.join("\n"),
@@ -330,7 +330,7 @@ async function sendServerChan(key: string, payload: PushPayload): Promise<boolea
   if (!key) return false
   try {
     const body = {
-      title: `📊 RepoIntel 情报速递 - ${payload.ruleName}`,
+      title: `📊 GitSight 情报速递 - ${payload.ruleName}`,
       desp: buildMarkdownText(payload),
     }
     const controller = new AbortController()

@@ -16,6 +16,7 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
+import { useApp } from "@/components/app-provider";
 
 interface StatusPanelProps {
   totalReports: number;
@@ -24,6 +25,8 @@ interface StatusPanelProps {
 }
 
 export function StatusPanel({ totalReports, totalComparisons, totalAlerts }: StatusPanelProps) {
+  const { dict } = useApp();
+  const t = dict.statusPanel;
   return (
     <Card className="border-border bg-card overflow-hidden">
       <CardContent className="p-0">
@@ -40,7 +43,7 @@ export function StatusPanel({ totalReports, totalComparisons, totalAlerts }: Sta
                 </Avatar>
                 <div>
                   <h2 className="text-base font-semibold text-foreground">
-                    本地用户
+                    {t.title}
                   </h2>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge
@@ -48,10 +51,10 @@ export function StatusPanel({ totalReports, totalComparisons, totalAlerts }: Sta
                       className="text-[10px] font-medium bg-primary/20 text-primary"
                     >
                       <Shield className="h-3 w-3 mr-1" />
-                      开源版
+                      {dict.common.active}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      所有功能无限制
+                      {dict.common.notConfigured}
                     </span>
                   </div>
                 </div>
@@ -59,7 +62,7 @@ export function StatusPanel({ totalReports, totalComparisons, totalAlerts }: Sta
               <Link href="/settings">
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <Settings className="h-3.5 w-3.5" />
-                  设置
+                  {dict.sidebar.settings}
                   <ArrowRight className="h-3 w-3" />
                 </Button>
               </Link>
@@ -68,10 +71,10 @@ export function StatusPanel({ totalReports, totalComparisons, totalAlerts }: Sta
             {/* Features */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: "深度分析", value: "无限" },
-                { label: "情报订阅", value: "无限" },
-                { label: "对比矩阵", value: "无限" },
-                { label: "私有仓库", value: "支持" },
+                { label: dict.repo.generateDeep, value: dict.common.yes },
+                { label: dict.alerts.title, value: dict.common.yes },
+                { label: dict.compare.title, value: dict.common.yes },
+                { label: "Private Repo", value: dict.common.yes },
               ].map((feature) => (
                 <div
                   key={feature.label}
@@ -90,20 +93,20 @@ export function StatusPanel({ totalReports, totalComparisons, totalAlerts }: Sta
             {/* Info */}
             <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground">
               <Calendar className="h-3.5 w-3.5" />
-              <span>所有数据存储在本地，完全由你掌控</span>
+              <span>{dict.common.notConfigured}</span>
             </div>
           </div>
 
           {/* Right: Stats */}
           <div className="lg:w-[360px] border-t lg:border-t-0 lg:border-l border-border p-6">
             <h3 className="text-sm font-medium text-foreground mb-4">
-              使用统计
+              {t.title}
             </h3>
             <div className="space-y-5">
               {[
-                { label: "分析报告", value: totalReports, max: Math.max(totalReports, 10) },
-                { label: "对比矩阵", value: totalComparisons, max: Math.max(totalComparisons, 10) },
-                { label: "情报规则", value: totalAlerts, max: Math.max(totalAlerts, 5) },
+                { label: dict.profile.analysisReports, value: totalReports, max: Math.max(totalReports, 10) },
+                { label: dict.compare.title, value: totalComparisons, max: Math.max(totalComparisons, 10) },
+                { label: dict.alerts.title, value: totalAlerts, max: Math.max(totalAlerts, 5) },
               ].map((stat) => {
                 const percentage = Math.round((stat.value / stat.max) * 100);
                 return (
@@ -128,11 +131,11 @@ export function StatusPanel({ totalReports, totalComparisons, totalAlerts }: Sta
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">
-                    数据存储
+                    {t.title}
                   </span>
                 </div>
                 <span className="text-sm font-medium">
-                  本地
+                  {dict.common.active}
                 </span>
               </div>
             </div>

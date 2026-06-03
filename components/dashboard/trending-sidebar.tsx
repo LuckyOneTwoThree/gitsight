@@ -15,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { LANGUAGE_COLORS } from "@/lib/repo-api";
+import { useApp } from "@/components/app-provider";
 
 interface TrendingItem {
   id: string;
@@ -36,6 +37,9 @@ interface HotTopic {
 
 export function TrendingSidebar() {
   const router = useRouter();
+  const { dict } = useApp();
+  const d = dict.dashboard;
+  const c = dict.common;
   const [trendingItems, setTrendingItems] = useState<TrendingItem[]>([]);
   const [hotTopics, setHotTopics] = useState<HotTopic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,7 +51,7 @@ export function TrendingSidebar() {
       setIsLoading(true);
       try {
         const response = await fetch("/api/stats/trending?range=weekly&limit=10");
-        if (!response.ok) throw new Error("加载失败");
+        if (!response.ok) throw new Error(c.error);
         const payload = await response.json();
         if (cancelled) return;
 
@@ -105,10 +109,10 @@ export function TrendingSidebar() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                 <TrendingUp className="h-4 w-4 text-primary" />
-                实时飙升榜
+                {d.trendingThisWeek}
               </CardTitle>
               <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground">
-                更多
+                {d.viewAll}
                 <ArrowRight className="h-3 w-3" />
               </Button>
             </div>
@@ -157,8 +161,7 @@ export function TrendingSidebar() {
             ) : (
               <div className="flex flex-col items-center py-8 text-muted-foreground">
                 <TrendingUp className="h-8 w-8 mb-2 opacity-40" />
-                <p className="text-xs">搜索并分析项目后</p>
-                <p className="text-xs">飙升榜将自动展示</p>
+                <p className="text-xs">{c.noData}</p>
               </div>
             )}
           </CardContent>
@@ -167,8 +170,8 @@ export function TrendingSidebar() {
         <Card className="border-border bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Flame className="h-4 w-4 text-orange-500" />
-              热门技术标签
+                <Flame className="h-4 w-4 text-orange-500" />
+                {d.hotTechTags}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -190,7 +193,7 @@ export function TrendingSidebar() {
               </div>
             ) : (
               <div className="flex flex-col items-center py-4 text-muted-foreground">
-                <p className="text-xs">暂无标签数据</p>
+                <p className="text-xs">{c.noData}</p>
               </div>
             )}
           </CardContent>
@@ -199,8 +202,8 @@ export function TrendingSidebar() {
         <Card className="border-border bg-card">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <ExternalLink className="h-4 w-4 text-muted-foreground" />
-              外部热议
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                {d.externalBuzz}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -211,7 +214,7 @@ export function TrendingSidebar() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">Hacker News</p>
-                  <p className="text-xs text-muted-foreground">即将接入</p>
+                  <p className="text-xs text-muted-foreground">...</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-lg bg-sky-500/10 p-3">
@@ -220,7 +223,7 @@ export function TrendingSidebar() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">X / Twitter</p>
-                  <p className="text-xs text-muted-foreground">即将接入</p>
+                  <p className="text-xs text-muted-foreground">...</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-lg bg-rose-500/10 p-3">
@@ -229,7 +232,7 @@ export function TrendingSidebar() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">Product Hunt</p>
-                  <p className="text-xs text-muted-foreground">即将接入</p>
+                  <p className="text-xs text-muted-foreground">...</p>
                 </div>
               </div>
             </div>

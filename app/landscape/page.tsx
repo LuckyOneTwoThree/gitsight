@@ -68,12 +68,6 @@ interface TrackOption {
 const defaultTracks: TrackOption[] = [
   { value: "ai-ml", label: "AI / ML", projectCount: 0 },
   { value: "ai-agent", label: "AI Agent", projectCount: 0 },
-  { value: "rag", label: "RAG / 知识检索", projectCount: 0 },
-  { value: "frontend", label: "前端 / UI", projectCount: 0 },
-  { value: "devops", label: "DevOps / 基础设施", projectCount: 0 },
-  { value: "database", label: "数据库 / 存储", projectCount: 0 },
-  { value: "dev-tools", label: "编程工具", projectCount: 0 },
-  { value: "web3", label: "Web3 / 区块链", projectCount: 0 },
 ];
 
 export default function LandscapePage() {
@@ -91,7 +85,16 @@ function LandscapeContent() {
   const [selectedTrack, setSelectedTrack] = useState(() => searchParams.get("track") || "ai-agent");
   const [projects, setProjects] = useState<LandscapeProject[]>([]);
   const [summary, setSummary] = useState<TrackSummaryData | null>(null);
-  const [tracks, setTracks] = useState<TrackOption[]>(defaultTracks);
+  const [tracks, setTracks] = useState<TrackOption[]>([
+    { value: "ai-ml", label: "AI / ML", projectCount: 0 },
+    { value: "ai-agent", label: "AI Agent", projectCount: 0 },
+    { value: "rag", label: t.trackRag, projectCount: 0 },
+    { value: "frontend", label: t.trackFrontend, projectCount: 0 },
+    { value: "devops", label: t.trackDevops, projectCount: 0 },
+    { value: "database", label: t.trackDatabase, projectCount: 0 },
+    { value: "dev-tools", label: t.trackDevTools, projectCount: 0 },
+    { value: "web3", label: t.trackWeb3, projectCount: 0 },
+  ]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadedAt, setLoadedAt] = useState<Date>(new Date());
 
@@ -99,7 +102,7 @@ function LandscapeContent() {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/landscape?track=${track}`);
-      if (!response.ok) throw new Error("加载失败");
+      if (!response.ok) throw new Error(dict.common.loadingFailed);
       const payload = await response.json();
       setProjects(payload.projects || []);
       setSummary(payload.summary || null);
@@ -133,7 +136,7 @@ function LandscapeContent() {
                 <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <Map className="h-5 w-5 text-primary" />
                   <span className="hidden sm:inline">{t.title}</span>
-                  <span className="sm:hidden">赛道</span>
+                  <span className="sm:hidden">{t.trackShort}</span>
                 </h1>
                 <p className="text-xs text-muted-foreground hidden sm:block">
                   {t.subtitle}
@@ -168,11 +171,11 @@ function LandscapeContent() {
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5" />
                 )}
-                <span className="hidden sm:inline">刷新数据</span>
+                <span className="hidden sm:inline">{t.refreshData}</span>
               </Button>
               <div className="hidden items-center gap-2 text-xs text-muted-foreground xl:flex">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-                <span>实时数据</span>
+                <span>{t.liveData}</span>
               </div>
             </div>
           </div>
@@ -199,9 +202,9 @@ function LandscapeContent() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                     <Map className="h-12 w-12 mb-4 opacity-40" />
-                    <p className="text-sm font-medium">暂无匹配项目</p>
+                    <p className="text-sm font-medium">{t.noProjects}</p>
                     <p className="text-xs mt-1">
-                      搜索并分析一些项目后，赛道大盘会自动展示相关数据
+                      {t.noProjectsHint}
                     </p>
                   </div>
                 )}
@@ -213,9 +216,9 @@ function LandscapeContent() {
                 )}
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs text-muted-foreground py-2 gap-1">
-                  <span>共 {projects.length} 个项目纳入分析</span>
+                  <span>{projects.length} {t.totalProjectsAnalyzed}</span>
                   <span>
-                    数据更新于 {Math.max(1, Math.floor((Date.now() - loadedAt.getTime()) / 60000))} 分钟前
+                    {t.dataUpdatedPrefix} {Math.max(1, Math.floor((Date.now() - loadedAt.getTime()) / 60000))} {dict.landscape.updatedMinutesAgo}
                   </span>
                 </div>
               </>

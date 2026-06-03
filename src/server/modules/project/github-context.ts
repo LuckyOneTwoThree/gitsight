@@ -422,7 +422,7 @@ function githubFetch(path: string) {
   return fetch(`${getServerEnv().githubApiBaseUrl}${path}`, {
     headers: {
       Accept: "application/vnd.github+json",
-      "User-Agent": "RepoIntel-MVP",
+      "User-Agent": "GitSight-MVP",
       ...(getServerEnv().githubToken
         ? {
             Authorization: `Bearer ${getServerEnv().githubToken}`,

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Sparkline } from "@/components/charts/sparkline"
 import { cn } from "@/lib/utils"
-import type { RepoDetail } from "@/lib/mock-repo-data"
+import type { RepoDetail } from "@/lib/analysis-sections"
+import { useApp } from "@/components/app-provider"
 
 interface RepoHeaderProps {
   repo: RepoDetail | null
@@ -25,6 +26,8 @@ function formatNumber(num: number): string {
 
 export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: RepoHeaderProps) {
   const router = useRouter()
+  const { dict } = useApp()
+  const t = dict.repoHeader
 
   if (isLoading || !repo) {
     return (
@@ -93,12 +96,12 @@ export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: Rep
           {collapsed ? (
             <>
               <ChevronDown className="h-3.5 w-3.5 transition-transform duration-300" />
-              展开
+              {dict.common.edit}
             </>
           ) : (
             <>
               <ChevronUp className="h-3.5 w-3.5 transition-transform duration-300" />
-              收起
+              {dict.common.close}
             </>
           )}
         </Button>
@@ -127,12 +130,12 @@ export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: Rep
                   <div className="flex items-center gap-1.5 text-foreground">
                     <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                     <span className="font-medium">{formatNumber(repo.stars)}</span>
-                    <span className="text-xs text-muted-foreground">stars</span>
+                    <span className="text-xs text-muted-foreground">{t.stars}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <GitFork className="h-4 w-4" />
                     <span>{formatNumber(repo.forks)}</span>
-                    <span className="text-xs text-muted-foreground">forks</span>
+                    <span className="text-xs text-muted-foreground">{t.forks}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Eye className="h-4 w-4" />
@@ -142,7 +145,7 @@ export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: Rep
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Users className="h-4 w-4" />
                     <span>{repo.contributors}</span>
-                    <span className="text-xs text-muted-foreground">贡献者</span>
+                    <span className="text-xs text-muted-foreground">{dict.landscape.contributors}</span>
                   </div>
                   <div className="h-4 w-px bg-border" />
                   <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -166,7 +169,7 @@ export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: Rep
                     </Badge>
                   ))}
                   {repo.topics.length > 8 && (
-                    <span className="text-xs text-muted-foreground">+{repo.topics.length - 8} 更多</span>
+                    <span className="text-xs text-muted-foreground">+{repo.topics.length - 8}</span>
                   )}
                 </div>
               </div>
@@ -176,12 +179,12 @@ export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: Rep
                 {hasRealStarHistory ? (
                   <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-4 py-2 border border-border">
                     <div className="text-right">
-                      <div className="text-xs text-muted-foreground mb-0.5">Star 历史趋势</div>
+                      <div className="text-xs text-muted-foreground mb-0.5">{dict.repo.starHistory}</div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-medium text-success">
                           {formatNumber(repo.starHistory.at(-1)! - repo.starHistory[0])}
                         </span>
-                        <span className="text-xs text-muted-foreground">新增</span>
+                        <span className="text-xs text-muted-foreground">+</span>
                       </div>
                     </div>
                     <div className="w-24 h-8">
@@ -190,10 +193,10 @@ export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: Rep
                   </div>
                 ) : (
                   <div className="rounded-lg border border-border bg-muted/50 px-4 py-3 text-right">
-                    <div className="text-xs text-muted-foreground">GitHub 同步状态</div>
-                    <div className="mt-1 text-sm font-medium text-foreground">已开始追踪当前指标</div>
+                    <div className="text-xs text-muted-foreground">{dict.common.active}</div>
+                    <div className="mt-1 text-sm font-medium text-foreground">{dict.statusPanel.running}</div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      积累 2 次快照后显示 Star 趋势
+                      {dict.dashboard.starTrendEmpty}
                     </div>
                   </div>
                 )}
@@ -205,7 +208,7 @@ export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse }: Rep
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" />
-                    <span>更新于 {repo.lastReleaseDate}</span>
+                    <span>{t.lastUpdated} {repo.lastReleaseDate}</span>
                   </div>
                 </div>
               </div>

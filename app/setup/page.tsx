@@ -8,17 +8,21 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle, Github, Sparkles, ArrowRight, ArrowLeft } from "lucide-react"
+import { useApp } from "@/components/app-provider"
 
 const PROVIDERS = [
   { id: "openai", name: "OpenAI", baseUrl: "https://api.openai.com/v1", defaultModel: "gpt-4.1-mini" },
   { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", defaultModel: "deepseek-chat" },
-  { id: "kimi", name: "Kimi (Moonshot)", baseUrl: "https://api.moonshot.ai/v1", defaultModel: "moonshot-v1-32k" },
-  { id: "mimo", name: "MiMo (Xiaomi)", baseUrl: "https://token-plan-cn.xiaomimimo.com/v1", defaultModel: "mimo-v2.5-pro" },
-  { id: "openrouter", name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", defaultModel: "xiaomi/mimo-v2.5-pro" },
+  { id: "qwen", name: "通义千问", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", defaultModel: "qwen-plus" },
+  { id: "kimi", name: "Kimi", baseUrl: "https://api.moonshot.ai/v1", defaultModel: "moonshot-v1-32k" },
+  { id: "mimo", name: "MiMo (小米)", baseUrl: "https://api.mimo.ai/v1", defaultModel: "mimo-v2.5-pro" },
+  { id: "openrouter", name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", defaultModel: "google/gemini-2.5-flash-preview" },
 ]
 
 export default function SetupPage() {
   const router = useRouter()
+  const { dict } = useApp()
+  const t = dict.setup
   const [step, setStep] = useState(0)
   const [githubToken, setGithubToken] = useState("")
   const [provider, setProvider] = useState("openai")
@@ -36,10 +40,14 @@ export default function SetupPage() {
         }
         if (data.config) {
           if (data.config.github_token) setGithubToken(data.config.github_token)
-          if (data.config.llm_provider) setProvider(data.config.llm_provider)
-          if (data.config.llm_api_key) setApiKey(data.config.llm_api_key)
-          if (data.config.llm_base_url) setBaseUrl(data.config.llm_base_url)
-          if (data.config.llm_model) setModel(data.config.llm_model)
+          if (data.config.llm_providers?.length > 0) {
+            const active = data.config.llm_providers.find(
+              (p: { id: string }) => p.id === data.config.llm_active_provider_id
+            ) || data.config.llm_providers[0]
+            if (active.provider) setProvider(active.provider)
+            if (active.base_url) setBaseUrl(active.base_url)
+            if (active.model) setModel(active.model)
+          }
         }
       })
       .catch(() => {})
@@ -57,15 +65,15 @@ export default function SetupPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
+      const providerId = `${provider}-setup`
       const res = await fetch("/api/desktop/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           github_token: githubToken,
-          llm_provider: provider,
-          llm_api_key: apiKey,
-          llm_base_url: baseUrl,
-          llm_model: model,
+          llm_providers: [{ id: providerId, provider, base_url: baseUrl, model }],
+          llm_active_provider_id: providerId,
+          llm_api_keys: apiKey ? { [providerId]: apiKey } : undefined,
         }),
       })
       if (res.ok) {
@@ -78,24 +86,23 @@ export default function SetupPage() {
 
   const steps = [
     {
-      title: "欢迎来到 RepoIntel",
-      description: "开源项目情报与分析工具，只需两步即可开始使用",
+      title: t.welcomeTitle,
+      description: t.welcomeDesc,
       icon: <Sparkles className="h-12 w-12 text-indigo-500" />,
       content: (
         <div className="space-y-4 text-center">
           <p className="text-muted-foreground">
-            RepoIntel 帮助你深度分析任何 GitHub 开源项目，
-            生成架构解读、逆向 PRD、技术栈分析等 9 种专业报告。
+            {t.welcomeBody1}
           </p>
           <p className="text-sm text-muted-foreground">
-            所有数据存储在本地，完全由你掌控。
+            {t.welcomeBody2}
           </p>
         </div>
       ),
     },
     {
-      title: "配置 GitHub Token",
-      description: "用于访问 GitHub API 获取项目数据",
+      title: t.step2Title,
+      description: t.githubTokenDesc,
       icon: <Github className="h-12 w-12 text-white" />,
       content: (
         <div className="space-y-4">
@@ -109,21 +116,20 @@ export default function SetupPage() {
               onChange={(e) => setGithubToken(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              前往 GitHub Settings → Developer settings → Personal access tokens 生成。
-              只需 public_repo 权限即可。不配置则使用匿名访问（60次/小时限制）。
+              {t.githubTokenHint}
             </p>
           </div>
         </div>
       ),
     },
     {
-      title: "配置 AI 模型",
-      description: "选择 LLM 提供商并填入 API Key",
+      title: t.aiModelTitle,
+      description: t.aiModelDesc,
       icon: <Sparkles className="h-12 w-12 text-indigo-500" />,
       content: (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>LLM 提供商</Label>
+            <Label>{t.llmProviderLabel}</Label>
             <Select value={provider} onValueChange={handleProviderChange}>
               <SelectTrigger>
                 <SelectValue />
@@ -156,11 +162,11 @@ export default function SetupPage() {
               onChange={(e) => setBaseUrl(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              如使用代理或自定义端点，可修改此项。
+              {t.baseUrlHint}
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="model">模型</Label>
+            <Label htmlFor="model">{t.modelLabel}</Label>
             <Input
               id="model"
               placeholder="gpt-4.1-mini"
@@ -172,31 +178,31 @@ export default function SetupPage() {
       ),
     },
     {
-      title: "配置完成",
-      description: "一切就绪，开始探索开源世界",
+      title: t.setupComplete,
+      description: t.setupCompleteDesc,
       icon: <CheckCircle className="h-12 w-12 text-green-500" />,
       content: (
         <div className="space-y-4 text-center">
           <div className="rounded-lg border p-4 text-left space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">GitHub Token</span>
-              <span>{githubToken ? "✓ 已配置" : "○ 未配置（匿名模式）"}</span>
+              <span className="text-muted-foreground">{t.githubTokenRow}</span>
+              <span>{githubToken ? `✓ ${dict.common.configured}` : `○ ${t.configuredAnonymous}`}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">LLM 提供商</span>
+              <span className="text-muted-foreground">{t.llmProviderRow}</span>
               <span>{PROVIDERS.find((p) => p.id === provider)?.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">API Key</span>
-              <span>{apiKey ? "✓ 已配置" : "✗ 未配置"}</span>
+              <span className="text-muted-foreground">{t.apiKeyRow}</span>
+              <span>{apiKey ? `✓ ${dict.common.configured}` : `✗ ${t.notConfiguredMark}`}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">模型</span>
+              <span className="text-muted-foreground">{t.modelRow}</span>
               <span>{model}</span>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            你可以随时在设置页面修改这些配置。
+            {t.canChangeInSettings}
           </p>
         </div>
       ),
@@ -223,16 +229,16 @@ export default function SetupPage() {
               disabled={step === 0}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              上一步
+              {t.previous}
             </Button>
             {step < steps.length - 1 ? (
               <Button onClick={() => setStep(step + 1)} disabled={!canProceed}>
-                下一步
+                {t.next}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
               <Button onClick={handleSave} disabled={saving || !apiKey}>
-                {saving ? "保存中..." : "开始使用"}
+                {saving ? t.savingText : t.startUsing}
                 {!saving && <Sparkles className="ml-2 h-4 w-4" />}
               </Button>
             )}

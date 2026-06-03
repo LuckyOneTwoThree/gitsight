@@ -10,25 +10,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const id = Number(reportId)
 
   if (!Number.isFinite(id) || id <= 0) {
-    return { title: "报告未找到 | RepoIntel" }
+    return { title: "报告未找到 | GitSight" }
   }
 
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     const res = await fetch(`${baseUrl}/api/public/reports/${id}`, { next: { revalidate: 3600 } })
-    if (!res.ok) return { title: "报告未找到 | RepoIntel" }
+    if (!res.ok) return { title: "报告未找到 | GitSight" }
 
     const data = await res.json()
     const repoName = data.repo?.full_name || "Unknown"
     const sectionLabel = sectionTypeLabel(data.section_type)
 
     return {
-      title: `${repoName} - ${sectionLabel} 分析报告 | RepoIntel`,
+      title: `${repoName} - ${sectionLabel} 分析报告 | GitSight`,
       description: data.content?.summary
         ? String(data.content.summary).slice(0, 160)
-        : `${repoName} 的深度分析报告，由 RepoIntel 生成`,
+        : `${repoName} 的深度分析报告，由 GitSight 生成`,
       openGraph: {
-        title: `${repoName} - ${sectionLabel} | RepoIntel`,
+        title: `${repoName} - ${sectionLabel} | GitSight`,
         description: data.content?.summary
           ? String(data.content.summary).slice(0, 160)
           : undefined,
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       },
     }
   } catch {
-    return { title: "分析报告 | RepoIntel" }
+    return { title: "分析报告 | GitSight" }
   }
 }
 

@@ -143,7 +143,7 @@ export async function extractEvidencePack(
 
   const result = await generateJsonWithLlm({
     system: [
-      "You are RepoIntel's evidence extraction engine.",
+      "You are GitSight's evidence extraction engine.",
       "Your job is not to write the final report. Your job is to extract verifiable facts, useful signals, and explicit unknowns from the provided evidence catalog.",
       "Return only a valid JSON object.",
       "All evidence_refs must be exact IDs from evidence_catalog. Never invent evidence IDs.",

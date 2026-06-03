@@ -34,8 +34,9 @@ import {
   ChevronUp,
   ExternalLink,
 } from "lucide-react";
-import type { ComparisonProject } from "@/lib/mock-compare-data";
+import type { ComparisonProject } from "@/lib/analysis-sections";
 import { featureDimensions } from "@/lib/constants";
+import { useApp } from "@/components/app-provider";
 
 interface ComparisonMatrixProps {
   projects: ComparisonProject[];
@@ -44,6 +45,8 @@ interface ComparisonMatrixProps {
 type DimensionTab = "basic" | "tech" | "features" | "business";
 
 export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
+  const { dict } = useApp();
+  const t = dict.compare;
   const [activeTab, setActiveTab] = useState<DimensionTab>("basic");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     core: true,
@@ -107,7 +110,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
     <TableHeader className="sticky top-0 z-10 bg-card">
       <TableRow className="border-border hover:bg-transparent">
         <TableHead className="w-[160px] bg-muted/30 font-medium">
-          对比维度
+          {t.selectAtLeast2}
         </TableHead>
         {projects.map((project) => (
           <TableHead key={project.id} className="min-w-[140px] bg-muted/30">
@@ -145,7 +148,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
         <TableCell className="bg-muted/10 font-medium">
           <div className="flex items-center gap-2">
             <Star className="h-4 w-4 text-muted-foreground" />
-            Star 数
+            Star
           </div>
         </TableCell>
         {projects.map((p) => (
@@ -158,7 +161,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
         <TableCell className="bg-muted/10 font-medium">
           <div className="flex items-center gap-2">
             <GitFork className="h-4 w-4 text-muted-foreground" />
-            Fork 数
+            Fork
           </div>
         </TableCell>
         {projects.map((p) => (
@@ -171,7 +174,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
         <TableCell className="bg-muted/10 font-medium">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            贡献者数
+            {dict.landscape.contributors}
           </div>
         </TableCell>
         {projects.map((p) => (
@@ -184,7 +187,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
         <TableCell className="bg-muted/10 font-medium">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            最后更新
+            {dict.repoHeader.lastUpdated}
           </div>
         </TableCell>
         {projects.map((p) => (
@@ -195,7 +198,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          PR 合并率
+          PR {dict.common.min}/{dict.common.max}
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id}>
@@ -208,7 +211,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          Issue 响应时间
+          Issue
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id} className="text-center">
@@ -220,7 +223,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          发版频率
+          Release
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id} className="text-center">
@@ -230,7 +233,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          创建时间
+          Created
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id} className="text-center">
@@ -258,7 +261,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
     <TableBody>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          主要语言
+          {dict.repoHeader.language}
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id} className="text-center">
@@ -277,7 +280,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          技术栈
+          Tech Stack
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id}>
@@ -293,7 +296,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          框架依赖
+          Frameworks
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id}>
@@ -309,7 +312,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          部署方式
+          Deploy
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id}>
@@ -325,7 +328,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          数据存储
+          Database
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id}>
@@ -364,7 +367,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
                 )}
                 <span className="font-semibold text-foreground">{section.label}</span>
                 <Badge variant="secondary" className="text-[10px]">
-                  {section.items.length} 项
+                  {section.items.length}
                 </Badge>
               </div>
             </TableCell>
@@ -393,7 +396,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
                             <AlertCircle className="h-3.5 w-3.5 text-warning" />
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="text-xs">功能空白：所有竞品均未实现</p>
+                            <p className="text-xs">{t.featureGaps}</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -417,7 +420,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
     <TableBody>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          商业模式
+          Business
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id} className="text-center">
@@ -429,7 +432,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          定价策略
+          Pricing
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id} className="text-center">
@@ -439,7 +442,7 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       </TableRow>
       <TableRow className="border-border">
         <TableCell className="bg-muted/10 font-medium">
-          目标用户
+          Target
         </TableCell>
         {projects.map((p) => (
           <TableCell key={p.id} className="text-center">
@@ -455,13 +458,13 @@ export function ComparisonMatrix({ projects }: ComparisonMatrixProps) {
       {/* Tabs */}
       <div className="border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">对比矩阵</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t.aiInsights}</h2>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DimensionTab)}>
             <TabsList className="bg-muted/50">
-              <TabsTrigger value="basic" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold">基础数据</TabsTrigger>
-              <TabsTrigger value="tech" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold">技术方案</TabsTrigger>
-              <TabsTrigger value="features" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold">功能模块</TabsTrigger>
-              <TabsTrigger value="business" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold">商业模式</TabsTrigger>
+              <TabsTrigger value="basic" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold">Basic</TabsTrigger>
+              <TabsTrigger value="tech" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold">Tech</TabsTrigger>
+              <TabsTrigger value="features" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold">Features</TabsTrigger>
+              <TabsTrigger value="business" className="text-xs data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold">Business</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

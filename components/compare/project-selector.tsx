@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/tooltip";
 import { repoToComparisonProject } from "@/lib/compare-utils";
 import type { ResolveRepoResponse } from "@/lib/repo-api";
-import type { ComparisonProject } from "@/lib/mock-compare-data";
+import type { ComparisonProject } from "@/lib/analysis-sections";
+import { useApp } from "@/components/app-provider";
 
 interface ProjectSelectorProps {
   selectedProjects: ComparisonProject[];
@@ -41,6 +42,8 @@ export function ProjectSelector({
   isLoadingProjects,
   disabled,
 }: ProjectSelectorProps) {
+  const { dict } = useApp();
+  const t = dict.compare;
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
@@ -76,7 +79,7 @@ export function ProjectSelector({
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error?.message || "无法解析这个 GitHub 仓库");
+        throw new Error(payload?.error?.message || t.noResults);
       }
 
       const repo = (await response.json()) as ResolveRepoResponse;
@@ -85,7 +88,7 @@ export function ProjectSelector({
       setSearchOpen(false);
       setSearchQuery("");
     } catch (error) {
-      setResolveError(error instanceof Error ? error.message : "解析失败");
+      setResolveError(error instanceof Error ? error.message : t.noResults);
     } finally {
       setIsResolvingRepo(false);
     }
@@ -95,13 +98,13 @@ export function ProjectSelector({
     <div className="rounded-xl border border-border bg-card p-3 sm:p-4">
       <div className="mb-3 sm:mb-4 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-medium text-foreground">已选择项目</h2>
+          <h2 className="text-sm font-medium text-foreground">{t.selectedProjects}</h2>
           <Badge variant="secondary" className="text-xs">
             {selectedProjects.length}/{maxProjects}
           </Badge>
         </div>
         <span className="text-xs text-muted-foreground hidden sm:inline">
-          选择 2-6 个仓库进行横向对比
+          {t.selectHint}
         </span>
       </div>
 
@@ -156,7 +159,7 @@ export function ProjectSelector({
                   <X className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>移除项目</TooltipContent>
+              <TooltipContent>{t.removeProject}</TooltipContent>
             </Tooltip>
           </div>
         ))}
@@ -170,18 +173,18 @@ export function ProjectSelector({
                 className="h-[56px] sm:h-[72px] min-w-[140px] sm:min-w-[180px] gap-2 border-dashed border-border hover:border-primary hover:bg-primary/5"
               >
                 <Plus className="h-4 w-4" />
-                添加对比项目
+                {t.addProject}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[560px] max-h-[85vh] flex flex-col">
               <DialogHeader>
-                <DialogTitle>添加对比项目</DialogTitle>
+                <DialogTitle>{t.addProject}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3 min-w-0 overflow-hidden">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="搜索已同步仓库名称、Owner 或标签"
+                    placeholder={t.searchOrPaste}
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     className="pl-9"
@@ -192,11 +195,11 @@ export function ProjectSelector({
                   {isLoadingProjects ? (
                     <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      正在加载已同步仓库
+                      {t.searching}
                     </div>
                   ) : filteredProjects.length === 0 ? (
                     <div className="py-8 text-center text-sm text-muted-foreground">
-                      暂无可添加仓库，可在下方粘贴 GitHub 地址解析
+                      {t.pasteHint}
                     </div>
                   ) : (
                     filteredProjects.map((project) => (
@@ -247,7 +250,7 @@ export function ProjectSelector({
                           }}
                         >
                           <Plus className="h-3 w-3" />
-                          添加
+                          {t.addProject}
                         </Button>
                       </div>
                     ))
@@ -259,7 +262,7 @@ export function ProjectSelector({
                     <Input
                       value={repoUrl}
                       onChange={(event) => setRepoUrl(event.target.value)}
-                      placeholder="或直接粘贴 GitHub 仓库 URL"
+                      placeholder={t.pasteHint}
                       className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
                     />
                     <Button
@@ -274,7 +277,7 @@ export function ProjectSelector({
                       ) : (
                         <ExternalLink className="mr-1 h-3.5 w-3.5" />
                       )}
-                      解析
+                      {t.parse}
                     </Button>
                   </div>
                   {resolveError && (

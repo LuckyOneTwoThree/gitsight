@@ -7,9 +7,8 @@ import { toast } from "sonner"
 import { RepoHeader } from "@/components/repo/repo-header"
 import { AnalysisSidebar } from "@/components/repo/analysis-sidebar"
 import { AnalysisContent } from "@/components/repo/analysis-content"
-// MVP: mock data - replace with API when available
-import { mockAnalysisSections } from "@/lib/mock-repo-data"
-import type { AnalysisSection, RepoDetail } from "@/lib/mock-repo-data"
+import { ANALYSIS_SECTIONS } from "@/lib/analysis-sections"
+import type { AnalysisSection, RepoDetail } from "@/lib/analysis-sections"
 import {
   applyAnalysisStatuses,
   frontendToBackendSection,
@@ -18,6 +17,7 @@ import {
   type ApiRepo,
   type RepoAnalysisResponse,
 } from "@/lib/repo-api"
+import { useApp } from "@/components/app-provider"
 
 interface AnalysisJobResponse {
   id: string
@@ -35,6 +35,8 @@ interface StartAnalysisResponse {
 
 export default function RepoDetailPage() {
   const params = useParams<{ owner: string; name: string }>()
+  const { dict } = useApp()
+  const t = dict.repo
   const [activeSection, setActiveSection] = useState("tldr")
   const [isLoading, setIsLoading] = useState(true)
   const [generatingSectionIds, setGeneratingSectionIds] = useState<Set<string>>(() => new Set())
@@ -62,7 +64,7 @@ export default function RepoDetailPage() {
         const repoResponse = await fetch(`/api/repos/${owner}/${name}`)
 
         if (!repoResponse.ok) {
-          throw new Error("无法加载这个 GitHub 仓库")
+          throw new Error(t.cannotLoadRepo)
         }
 
         const repoPayload = (await repoResponse.json()) as ApiRepo
@@ -81,12 +83,12 @@ export default function RepoDetailPage() {
         setRepo(toRepoDetail(repoPayload))
         setSections(
           analysisPayload
-            ? applyAnalysisStatuses(mockAnalysisSections, analysisPayload.reports)
-            : mockAnalysisSections
+            ? applyAnalysisStatuses(ANALYSIS_SECTIONS, analysisPayload.reports)
+            : ANALYSIS_SECTIONS
         )
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "加载失败")
+          setError(loadError instanceof Error ? loadError.message : dict.common.loadingFailed);
         }
       } finally {
         if (!cancelled) {
@@ -218,11 +220,11 @@ export default function RepoDetailPage() {
 
   const playCachedReportProgress = async (sectionId: string) => {
     const steps = [
-      { progress: 18, stage: "正在读取项目分析缓存" },
-      { progress: 36, stage: "正在校验报告版本" },
-      { progress: 58, stage: "正在绑定你的报告记录" },
-      { progress: 78, stage: "正在同步额度与任务状态" },
-      { progress: 94, stage: "正在整理报告展示" },
+      { progress: 18, stage: t.readingCache },
+      { progress: 36, stage: t.verifyingVersion },
+      { progress: 58, stage: t.bindingReport },
+      { progress: 78, stage: t.syncingStatus },
+      { progress: 94, stage: t.organizingReport },
     ]
 
     for (const step of steps) {
@@ -255,7 +257,7 @@ export default function RepoDetailPage() {
               ...item,
               status: "generating",
               progress: 8,
-              progressStage: reportMode === "fast" ? "正在生成快速报告" : "正在生成深度报告",
+              progressStage: reportMode === "fast" ? t.generatingFastReport : t.generatingDeepReport,
             }
           : item
       )
@@ -286,17 +288,17 @@ export default function RepoDetailPage() {
       if (!response.ok) {
         if (response.status === 403) {
           setLlmConfigured(false)
-          toast.error("请先在设置中配置 LLM API Key", {
-            action: { label: "前往设置", onClick: () => window.location.href = "/settings" },
+          toast.error(t.pleaseConfigureLlmKey, {
+            action: { label: t.goToSettings, onClick: () => window.location.href = "/settings" },
           })
           return
         }
         if (response.status === 401) {
-          toast.error("请求失败，请检查配置后重试。")
+          toast.error(t.requestFailedCheckConfig)
           return
         }
         const payload = await response.json().catch(() => null)
-        throw new Error(payload?.error?.message || "生成报告失败")
+        throw new Error(payload?.error?.message || t.generateReportFailed)
       }
 
       const started = (await response.json()) as StartAnalysisResponse
@@ -342,7 +344,7 @@ export default function RepoDetailPage() {
         setSections((current) => applyAnalysisStatuses(current, payload.reports))
       }
     } catch (generateError) {
-      setError(generateError instanceof Error ? generateError.message : "生成失败")
+      setError(generateError instanceof Error ? generateError.message : dict.common.loadingFailed)
       setSections((current) =>
         current.map((item) =>
           item.id === section.id
@@ -362,6 +364,23 @@ export default function RepoDetailPage() {
         generatingIdsRef.current = next
         return next
       })
+    }
+  }
+
+  const handleGenerateAll = async () => {
+    if (!repo || !llmConfigured) return
+    const notGenerated = sections.filter(
+      (s) => s.status === "not_generated" && !generatingSectionIds.has(s.id)
+    )
+    if (notGenerated.length === 0) {
+      toast.info(t.allReportsGeneratedOrGenerating)
+      return
+    }
+    toast.info(`${t.startBatchGenerate} ${notGenerated.length} ${t.reportsGenerating}`)
+    for (const section of notGenerated) {
+      void handleGenerate(section)
+      // Stagger requests to avoid overwhelming the API
+      await new Promise((resolve) => window.setTimeout(resolve, 500))
     }
   }
 
@@ -403,7 +422,7 @@ export default function RepoDetailPage() {
         )}
         {backgroundGeneratingSections.length > 0 && (
           <div className="shrink-0 border-b border-border bg-primary/10 px-4 md:px-6 py-2 text-xs text-primary">
-            {backgroundGeneratingSections.map((section) => section.name).join("、")} 正在后台生成，完成后会自动更新左侧状态
+            {backgroundGeneratingSections.map((section) => section.name).join("、")} {t.backgroundGenerating}
           </div>
         )}
         
@@ -438,6 +457,7 @@ export default function RepoDetailPage() {
                   setActiveSection(id)
                   setHeaderCollapsed(true)
                 }}
+                onGenerateAll={handleGenerateAll}
               />
               
               {/* Right: Analysis Content */}

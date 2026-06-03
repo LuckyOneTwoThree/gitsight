@@ -100,18 +100,24 @@ export const frequencyOptions = [
 
 export const reportTypeLabels: Record<string, string> = {
   tldr: "TL;DR",
-  prd: "逆向 PRD",
+  reverse_prd: "逆向 PRD",
   architecture: "架构梳理",
-  codewiki: "CodeWiki",
-  business: "商业分析",
+  code_wiki: "CodeWiki",
   timeline: "时光机",
+  tech_stack: "技术栈分析",
+  community: "社区健康度",
+  contribution_guide: "贡献指南",
+  supply_chain: "供应链安全",
 };
 
 export const reportTypeColors: Record<string, string> = {
   tldr: "#3b82f6",
-  prd: "#8b5cf6",
+  reverse_prd: "#8b5cf6",
   architecture: "#10b981",
-  codewiki: "#f59e0b",
-  business: "#ef4444",
+  code_wiki: "#f59e0b",
   timeline: "#06b6d4",
+  tech_stack: "#f97316",
+  community: "#ec4899",
+  contribution_guide: "#14b8a6",
+  supply_chain: "#ef4444",
 };

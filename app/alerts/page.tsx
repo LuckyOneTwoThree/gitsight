@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import {
+  Activity,
   Bell,
   Plus,
   Pause,
@@ -89,12 +90,7 @@ const TAGS = ["web3", "llm-agent", "rag", "devops", "ai", "database", "framework
 const INTEL_GRADES = ["A+", "A", "B+", "B", "C+", "C", "D"]
 const LICENSE_TYPES = ["MIT", "Apache-2.0", "GPL-3.0", "GPL-2.0", "BSD-3-Clause", "BSD-2-Clause", "MPL-2.0", "LGPL-3.0", "Unlicense", "AGPL-3.0"]
 
-const FREQUENCY_LABELS: Record<string, string> = {
-  hourly: "每小时",
-  daily: "每天",
-  weekly: "每周",
-  on_change: "有变化时",
-}
+
 
 interface RuleForm {
   name: string
@@ -164,7 +160,7 @@ export default function AlertsPage() {
       setStats(rulesData.stats || null)
       setChannels(channelsData.channels || [])
     } catch {
-      toast.error("获取数据失败")
+      toast.error(t.fetchFailed)
     } finally {
       setLoading(false)
     }
@@ -179,7 +175,7 @@ export default function AlertsPage() {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast.error("请输入规则名称")
+      toast.error(t.ruleNameRequired)
       return
     }
     setSaving(true)
@@ -218,9 +214,9 @@ export default function AlertsPage() {
         })
         if (!res.ok) {
           const data = await res.json()
-          throw new Error(data.error?.message || "更新失败")
+          throw new Error(data.error?.message || t.updateFailed)
         }
-        toast.success("规则更新成功")
+        toast.success(t.ruleUpdated)
       } else {
         const res = await fetch("/api/alerts/rules", {
           method: "POST",
@@ -229,9 +225,9 @@ export default function AlertsPage() {
         })
         if (!res.ok) {
           const data = await res.json()
-          throw new Error(data.error?.message || "创建失败")
+          throw new Error(data.error?.message || t.createFailed)
         }
-        toast.success("规则创建成功")
+        toast.success(t.ruleCreated)
       }
       setCreateDialogOpen(false)
       setEditDialogOpen(false)
@@ -239,7 +235,7 @@ export default function AlertsPage() {
       setForm({ ...defaultForm })
       fetchData()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "操作失败")
+      toast.error(err instanceof Error ? err.message : dict.common.operationFailed)
     } finally {
       setSaving(false)
     }
@@ -252,22 +248,22 @@ export default function AlertsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: rule.id, isActive: !rule.isActive }),
       })
-      if (!res.ok) throw new Error("操作失败")
-      toast.success(rule.isActive ? "规则已暂停" : "规则已恢复")
+      if (!res.ok) throw new Error(dict.common.operationFailed)
+      toast.success(rule.isActive ? t.rulePaused : t.ruleResumed)
       fetchData()
     } catch {
-      toast.error("操作失败")
+      toast.error(dict.common.operationFailed)
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
       const res = await fetch(`/api/alerts/rules?id=${id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("删除失败")
-      toast.success("规则已删除")
+      if (!res.ok) throw new Error(t.deleteFailed)
+      toast.success(t.ruleDeleted)
       fetchData()
     } catch {
-      toast.error("删除失败")
+      toast.error(t.deleteFailed)
     }
   }
 
@@ -281,12 +277,12 @@ export default function AlertsPage() {
       })
       const data = await res.json()
       if (data.matchedRepos !== undefined) {
-        toast.success(`匹配 ${data.matchedRepos} 个项目`)
+        toast.success(t.matchedProjects.replace('{count}', String(data.matchedRepos)))
       } else {
-        toast.error("测试失败")
+        toast.error(t.testFailed)
       }
     } catch {
-      toast.error("测试失败")
+      toast.error(t.testFailed)
     } finally {
       setTestingRuleId(null)
     }
@@ -325,11 +321,11 @@ export default function AlertsPage() {
 
   const getConditionsSummary = (rule: AlertRule) => {
     const parts: string[] = []
-    if (rule.conditions.languages.length) parts.push(`语言: ${rule.conditions.languages.join(", ")}`)
-    if (rule.conditions.tags.length) parts.push(`标签: ${rule.conditions.tags.join(", ")}`)
-    if (rule.conditions.intelGradeRange.length) parts.push(`等级: ${rule.conditions.intelGradeRange.join(", ")}`)
+    if (rule.conditions.languages.length) parts.push(`${t.langLabel}: ${rule.conditions.languages.join(", ")}`)
+    if (rule.conditions.tags.length) parts.push(`${t.tagLabel}: ${rule.conditions.tags.join(", ")}`)
+    if (rule.conditions.intelGradeRange.length) parts.push(`${t.gradeLabel}: ${rule.conditions.intelGradeRange.join(", ")}`)
     if (rule.conditions.starThreshold) parts.push(`⭐ ≥${rule.conditions.starThreshold}`)
-    return parts.length ? parts.join(" · ") : "无筛选条件"
+    return parts.length ? parts.join(" · ") : t.noFilterConditions
   }
 
   const configuredChannels = channels.filter((c) => c.is_configured)
@@ -337,16 +333,16 @@ export default function AlertsPage() {
   const renderForm = () => (
     <div className="space-y-5 max-h-[65vh] overflow-y-auto pr-2">
       <div className="space-y-2">
-        <Label className="text-sm">规则名称</Label>
+        <Label className="text-sm">{t.ruleName}</Label>
         <Input
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          placeholder="例如：Rust 高星项目"
+          placeholder={t.ruleNamePlaceholder}
         />
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">语言</Label>
+        <Label className="text-sm">{t.language}</Label>
         <div className="flex flex-wrap gap-1.5">
           {LANGUAGES.map((lang) => (
             <button
@@ -367,7 +363,7 @@ export default function AlertsPage() {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">标签</Label>
+        <Label className="text-sm">{t.tags}</Label>
         <div className="flex flex-wrap gap-1.5">
           {TAGS.map((tag) => (
             <button
@@ -389,7 +385,7 @@ export default function AlertsPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label className="text-sm">最低星数</Label>
+          <Label className="text-sm">{t.minStars}</Label>
           <Input
             type="number"
             value={form.starThreshold}
@@ -397,17 +393,17 @@ export default function AlertsPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label className="text-sm">星数范围</Label>
+          <Label className="text-sm">{t.starRange}</Label>
           <div className="flex gap-2">
             <Input
               type="number"
-              placeholder="最小"
+              placeholder={dict.common.min}
               value={form.minStars}
               onChange={(e) => setForm((f) => ({ ...f, minStars: e.target.value }))}
             />
             <Input
               type="number"
-              placeholder="最大"
+              placeholder={dict.common.max}
               value={form.maxStars}
               onChange={(e) => setForm((f) => ({ ...f, maxStars: e.target.value }))}
             />
@@ -417,34 +413,34 @@ export default function AlertsPage() {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label className="text-sm">增速范围</Label>
+          <Label className="text-sm">{t.velocityRange}</Label>
           <div className="flex gap-2">
             <Input
               type="number"
-              placeholder="最小"
+              placeholder={dict.common.min}
               value={form.velocityMin}
               onChange={(e) => setForm((f) => ({ ...f, velocityMin: e.target.value }))}
             />
             <Input
               type="number"
-              placeholder="最大"
+              placeholder={dict.common.max}
               value={form.velocityMax}
               onChange={(e) => setForm((f) => ({ ...f, velocityMax: e.target.value }))}
             />
           </div>
         </div>
         <div className="space-y-2">
-          <Label className="text-sm">Fork 范围</Label>
+          <Label className="text-sm">{t.forkRange}</Label>
           <div className="flex gap-2">
             <Input
               type="number"
-              placeholder="最小"
+              placeholder={dict.common.min}
               value={form.forksMin}
               onChange={(e) => setForm((f) => ({ ...f, forksMin: e.target.value }))}
             />
             <Input
               type="number"
-              placeholder="最大"
+              placeholder={dict.common.max}
               value={form.forksMax}
               onChange={(e) => setForm((f) => ({ ...f, forksMax: e.target.value }))}
             />
@@ -453,7 +449,7 @@ export default function AlertsPage() {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">情报等级</Label>
+        <Label className="text-sm">{t.intelGrade}</Label>
         <div className="flex flex-wrap gap-1.5">
           {INTEL_GRADES.map((grade) => (
             <button
@@ -474,7 +470,7 @@ export default function AlertsPage() {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">排除语言</Label>
+        <Label className="text-sm">{t.excludeLanguages}</Label>
         <div className="flex flex-wrap gap-1.5">
           {LANGUAGES.map((lang) => (
             <button
@@ -495,7 +491,7 @@ export default function AlertsPage() {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">排除标签</Label>
+        <Label className="text-sm">{t.excludeTags}</Label>
         <div className="flex flex-wrap gap-1.5">
           {TAGS.map((tag) => (
             <button
@@ -516,7 +512,7 @@ export default function AlertsPage() {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">许可证类型</Label>
+        <Label className="text-sm">{t.licenseTypes}</Label>
         <div className="flex flex-wrap gap-1.5">
           {LICENSE_TYPES.map((lic) => (
             <button
@@ -537,7 +533,7 @@ export default function AlertsPage() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Label className="text-sm">包含已归档项目</Label>
+        <Label className="text-sm">{t.includeArchived}</Label>
         <Switch
           checked={form.isArchived}
           onCheckedChange={(checked) => setForm((f) => ({ ...f, isArchived: checked }))}
@@ -545,28 +541,28 @@ export default function AlertsPage() {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">推送频率</Label>
+        <Label className="text-sm">{t.pushFrequency}</Label>
         <Select value={form.frequency} onValueChange={(v) => setForm((f) => ({ ...f, frequency: v }))}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="hourly">每小时</SelectItem>
-            <SelectItem value="daily">每天</SelectItem>
-            <SelectItem value="weekly">每周</SelectItem>
-            <SelectItem value="on_change">有变化时</SelectItem>
+            <SelectItem value="hourly">{t.hourly}</SelectItem>
+            <SelectItem value="daily">{t.daily}</SelectItem>
+            <SelectItem value="weekly">{t.weekly}</SelectItem>
+            <SelectItem value="on_change">{t.onChange}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">推送渠道</Label>
+        <Label className="text-sm">{t.pushChannel}</Label>
         {configuredChannels.length === 0 ? (
           <div className="rounded-md border border-dashed border-border p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-2">暂无已配置的推送渠道</p>
+            <p className="text-xs text-muted-foreground mb-2">{t.noConfiguredChannels}</p>
             <Link href="/settings" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
               <Settings className="h-3 w-3" />
-              前往设置配置渠道
+              {t.goToSettingsConfigure}
             </Link>
           </div>
         ) : (
@@ -591,7 +587,7 @@ export default function AlertsPage() {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-sm">自定义 Webhook URL（可选）</Label>
+        <Label className="text-sm">{t.customWebhook}</Label>
         <Input
           type="url"
           value={form.webhookUrl}
@@ -620,7 +616,7 @@ export default function AlertsPage() {
             </div>
             <Button size="sm" className="gap-2" onClick={openCreateDialog}>
               <Plus className="h-4 w-4" />
-              创建规则
+              {t.createRule}
             </Button>
           </div>
         </header>
@@ -635,19 +631,19 @@ export default function AlertsPage() {
               <aside className="xl:w-[260px] shrink-0 space-y-4">
                 <Card className="border-border bg-card">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-semibold">概览</CardTitle>
+                    <CardTitle className="text-sm font-semibold">{t.overview}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">活跃规则</span>
+                      <span className="text-xs text-muted-foreground">{t.activeRules}</span>
                       <span className="text-sm font-semibold">{stats?.activeRules ?? 0}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">总规则数</span>
+                      <span className="text-xs text-muted-foreground">{t.totalRules}</span>
                       <span className="text-sm font-semibold">{stats?.totalRules ?? 0}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">本周推送</span>
+                      <span className="text-xs text-muted-foreground">{t.weeklyPushes}</span>
                       <span className="text-sm font-semibold">{stats?.weeklyPushes ?? 0}</span>
                     </div>
                   </CardContent>
@@ -656,20 +652,20 @@ export default function AlertsPage() {
                 <Card className="border-border bg-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">推送渠道</CardTitle>
+                      <CardTitle className="text-sm font-semibold">{t.pushChannels}</CardTitle>
                       <Link href="/settings" className="text-xs text-primary hover:underline flex items-center gap-1">
                         <Settings className="h-3 w-3" />
-                        配置
+                        {t.configure}
                       </Link>
                     </div>
                   </CardHeader>
                   <CardContent>
                     {channels.length === 0 ? (
                       <div className="text-center py-3">
-                        <p className="text-xs text-muted-foreground mb-2">暂无推送渠道</p>
+                        <p className="text-xs text-muted-foreground mb-2">{t.noPushChannels}</p>
                         <Link href="/settings" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                           <ExternalLink className="h-3 w-3" />
-                          前往配置
+                          {t.goToConfigure}
                         </Link>
                       </div>
                     ) : (
@@ -693,10 +689,10 @@ export default function AlertsPage() {
                 <Card className="border-border bg-card">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold">外部触发</CardTitle>
+                      <CardTitle className="text-sm font-semibold">{t.externalTrigger}</CardTitle>
                       <Link href="/settings" className="text-xs text-primary hover:underline flex items-center gap-1">
                         <Settings className="h-3 w-3" />
-                        配置
+                        {t.configure}
                       </Link>
                     </div>
                   </CardHeader>
@@ -704,14 +700,14 @@ export default function AlertsPage() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs text-muted-foreground">本地调度运行中</span>
+                        <span className="text-xs text-muted-foreground">{t.localSchedulerRunning}</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        关闭程序后推送将暂停，可配置外部定时服务保持推送
+                        {t.externalTriggerDesc}
                       </p>
                       <Link href="/settings" className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
                         <ExternalLink className="h-3 w-3" />
-                        查看配置方式
+                        {t.viewSetup}
                       </Link>
                     </div>
                   </CardContent>
@@ -723,10 +719,10 @@ export default function AlertsPage() {
                   <Card className="border-border bg-card">
                     <CardContent className="flex flex-col items-center justify-center py-16">
                       <Bell className="h-10 w-10 text-muted-foreground mb-3" />
-                      <p className="text-sm text-muted-foreground mb-4">还没有订阅规则</p>
+                      <p className="text-sm text-muted-foreground mb-4">{t.noRulesYet}</p>
                       <Button size="sm" className="gap-2" onClick={openCreateDialog}>
                         <Plus className="h-4 w-4" />
-                        创建第一条规则
+                        {t.createFirstRule}
                       </Button>
                     </CardContent>
                   </Card>
@@ -739,25 +735,25 @@ export default function AlertsPage() {
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-sm font-semibold truncate">{rule.name}</span>
                               <Badge variant={rule.isActive ? "default" : "secondary"} className="text-[10px]">
-                                {rule.isActive ? "活跃" : "已暂停"}
+                                {rule.isActive ? dict.common.active : dict.common.paused}
                               </Badge>
                               <Badge variant="outline" className="text-[10px]">
-                                {FREQUENCY_LABELS[rule.frequency] || rule.frequency}
+                                {({ hourly: t.hourly, daily: t.daily, weekly: t.weekly, on_change: t.onChange } as Record<string, string>)[rule.frequency] || rule.frequency}
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground mb-2">{getConditionsSummary(rule)}</p>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                               {rule.channels.channelIds.length > 0 && (
-                                <span>{rule.channels.channelIds.length} 个渠道</span>
+                                <span>{rule.channels.channelIds.length} {t.channelsCount}</span>
                               )}
                               {rule.channels.webhook && (
                                 <span>Webhook</span>
                               )}
                               {rule.pushCount > 0 && (
-                                <span>推送 {rule.pushCount} 次</span>
+                                <span>{t.pushCount.replace('{count}', String(rule.pushCount))}</span>
                               )}
                               {rule.lastPushAt && (
-                                <span>最近推送: {rule.lastPushAt}</span>
+                                <span>{t.lastPush}: {rule.lastPushAt}</span>
                               )}
                             </div>
                           </div>
@@ -809,6 +805,55 @@ export default function AlertsPage() {
                     </Card>
                   ))
                 )}
+
+                {rules.length > 0 && (() => {
+                  const pushActivity = rules
+                    .filter((r) => r.lastPushAt || r.pushCount > 0)
+                    .sort((a, b) => {
+                      if (a.lastPushAt && b.lastPushAt) return b.lastPushAt.localeCompare(a.lastPushAt)
+                      if (a.lastPushAt) return -1
+                      if (b.lastPushAt) return 1
+                      return b.pushCount - a.pushCount
+                    })
+                  if (pushActivity.length === 0) return null
+                  return (
+                    <Card className="border-border bg-card">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                          <Activity className="h-4 w-4 text-primary" />
+                          {t.recentPushActivity}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {pushActivity.map((rule) => (
+                            <div key={rule.id} className="flex items-center gap-3">
+                              <div className="flex flex-col items-center">
+                                <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                                <div className="w-px flex-1 bg-border min-h-[16px]" />
+                              </div>
+                              <div className="flex-1 min-w-0 pb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium truncate">{rule.name}</span>
+                                  <Badge variant={rule.isActive ? "default" : "secondary"} className="text-[10px]">
+                                    {rule.isActive ? dict.common.active : dict.common.paused}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {rule.lastPushAt || t.neverPushed}
+                                  </span>
+                                  <span>{t.totalPushCount.replace('{count}', String(rule.pushCount))}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })()}
               </div>
             </div>
           )}
@@ -816,32 +861,36 @@ export default function AlertsPage() {
       </div>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>创建订阅规则</DialogTitle>
+            <DialogTitle>{t.createSubscriptionRule}</DialogTitle>
           </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-w-0">
           {renderForm()}
+          </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>{dict.common.cancel}</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              创建
+              {dict.common.create}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>编辑订阅规则</DialogTitle>
+            <DialogTitle>{t.editSubscriptionRule}</DialogTitle>
           </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-w-0">
           {renderForm()}
+          </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{dict.common.cancel}</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              保存
+              {dict.common.save}
             </Button>
           </div>
         </DialogContent>

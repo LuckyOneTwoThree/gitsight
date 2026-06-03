@@ -28,6 +28,7 @@ import {
   Star,
   Radar,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 interface HeaderProps {
   timeRange: string;
@@ -52,6 +53,9 @@ export function Header({
   languageFilter,
   onLanguageFilterChange,
 }: HeaderProps) {
+  const { dict } = useApp();
+  const d = dict.discover;
+  const c = dict.common;
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-auto min-h-16 items-center justify-between gap-2 px-4 md:px-6 py-2">
@@ -60,10 +64,10 @@ export function Header({
           <div className="shrink-0">
             <h1 className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <Radar className="h-5 w-5 text-primary" />
-              <span className="hidden sm:inline">发现探索</span>
-              <span className="sm:hidden">发现</span>
+              <span className="hidden sm:inline">{d.title}</span>
+              <span className="sm:hidden">{d.title}</span>
             </h1>
-            <p className="text-xs text-muted-foreground hidden sm:block">实时追踪开源世界的热门动态</p>
+            <p className="text-xs text-muted-foreground hidden sm:block">{d.subtitle}</p>
           </div>
           
           <div className="hidden lg:block">
@@ -71,15 +75,15 @@ export function Header({
               <TabsList className="bg-muted/50">
                 <TabsTrigger value="velocity" className="gap-2 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-sm">
                   <TrendingUp className="h-3.5 w-3.5" />
-                  <span>短期飙升</span>
+                  <span>{d.sortByVelocity}</span>
                 </TabsTrigger>
                 <TabsTrigger value="trending" className="gap-2 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-sm">
                   <Flame className="h-3.5 w-3.5" />
-                  <span>热门榜单</span>
+                  <span>{d.trending}</span>
                 </TabsTrigger>
                 <TabsTrigger value="new" className="gap-2 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-sm">
                   <Star className="h-3.5 w-3.5" />
-                  <span>新兴黑马</span>
+                  <span>{d.recentlyAnalyzed}</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -92,13 +96,13 @@ export function Header({
           <Select value={timeRange} onValueChange={onTimeRangeChange}>
             <SelectTrigger className="w-[110px] md:w-[130px] border-border bg-input">
               <Clock className="mr-1 md:mr-2 h-3.5 w-3.5 text-muted-foreground" />
-              <SelectValue placeholder="时间范围" />
+              <SelectValue placeholder={d.timeRange} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="today">今日</SelectItem>
-              <SelectItem value="week">本周</SelectItem>
-              <SelectItem value="month">本月</SelectItem>
-              <SelectItem value="all">全部时间</SelectItem>
+              <SelectItem value="today">{dict.dashboard.todayPlus.trim()}</SelectItem>
+              <SelectItem value="week">{dict.dashboard.thisWeek.trim()}</SelectItem>
+              <SelectItem value="month">{d.thisMonth}</SelectItem>
+              <SelectItem value="all">{d.allTime}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -112,8 +116,8 @@ export function Header({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => onLanguageFilterChange?.("all")}>
-                <Badge className="mr-2 bg-muted">全部</Badge>
-                {languageFilter === "all" || !languageFilter ? "✓ " : ""}全部语言
+                <Badge className="mr-2 bg-muted">{dict.landscape.filterAll}</Badge>
+                {languageFilter === "all" || !languageFilter ? "✓ " : ""}{d.filterByLanguage}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onLanguageFilterChange?.("TypeScript")}>
                 <Badge className="mr-2 bg-[#3178c6]">TypeScript</Badge>
@@ -166,7 +170,7 @@ export function Header({
           {/* Last Updated */}
           <div className="hidden items-center gap-2 text-xs text-muted-foreground xl:flex">
             <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-            <span>{lastFetchedAt ? `${Math.max(1, Math.floor((Date.now() - lastFetchedAt.getTime()) / 60000))} 分钟前更新` : "加载中…"}</span>
+            <span>{lastFetchedAt ? `${Math.max(1, Math.floor((Date.now() - lastFetchedAt.getTime()) / 60000))} ${dict.landscape.updatedMinutesAgo}` : c.loading}</span>
           </div>
         </div>
       </div>

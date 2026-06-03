@@ -27,6 +27,7 @@ import {
   GitFork,
   Filter,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 interface LandscapeProject {
   id: string;
@@ -59,9 +60,11 @@ interface ChartDataPoint {
 function CustomTooltip({
   active,
   payload,
+  t,
 }: {
   active?: boolean;
   payload?: Array<{ payload: ChartDataPoint }>;
+  t: ReturnType<typeof useApp>["dict"]["landscape"];
 }) {
   if (!active || !payload || !payload.length) return null;
 
@@ -107,7 +110,7 @@ function CustomTooltip({
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <TrendingUp className="h-3 w-3" />
           <span className="font-medium text-foreground">
-            +{project.starsWeek.toLocaleString()}/周
+            +{project.starsWeek.toLocaleString()}{t.perWeek}
           </span>
         </div>
         <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -129,6 +132,8 @@ function CustomTooltip({
 
 export function BubbleChart({ projects }: BubbleChartProps) {
   const router = useRouter();
+  const { dict } = useApp();
+  const t = dict.landscape;
   const [selectedTechRoute, setSelectedTechRoute] = useState<string | null>(null);
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
 
@@ -180,9 +185,9 @@ export function BubbleChart({ projects }: BubbleChartProps) {
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
           <div className="min-w-0">
-            <CardTitle className="text-base font-semibold">赛道全景地图</CardTitle>
+            <CardTitle className="text-base font-semibold">{t.title}</CardTitle>
             <CardDescription className="text-xs mt-1">
-              X 轴：Star 总数 · Y 轴：近期活跃度 · 气泡大小：社区规模
+              {t.bubbleChartDesc}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap shrink-0">
@@ -194,7 +199,7 @@ export function BubbleChart({ projects }: BubbleChartProps) {
                 className="h-7 text-xs"
                 onClick={() => setSelectedTechRoute(null)}
               >
-                全部
+                {t.filterAll}
               </Button>
               {techRoutes.map((route) => (
                 <Button
@@ -223,7 +228,7 @@ export function BubbleChart({ projects }: BubbleChartProps) {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="h-[350px] md:h-[500px] w-full">
+        <div className="h-[350px] md:h-[500px] w-full min-w-0" style={{ minWidth: 200 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart
               margin={{ top: 20, right: 30, bottom: 20, left: 20 }}
@@ -249,7 +254,7 @@ export function BubbleChart({ projects }: BubbleChartProps) {
                 tickLine={false}
               >
                 <Label
-                  value="Star 总数（对数刻度）"
+                  value={t.bubbleChart}
                   position="insideBottom"
                   offset={-10}
                   style={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
@@ -265,7 +270,7 @@ export function BubbleChart({ projects }: BubbleChartProps) {
                 tickLine={false}
               >
                 <Label
-                  value="近期活跃度"
+                  value={t.risingStars}
                   angle={-90}
                   position="insideLeft"
                   style={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
@@ -278,7 +283,7 @@ export function BubbleChart({ projects }: BubbleChartProps) {
                 name="Community"
               />
               <Tooltip
-                content={<CustomTooltip />}
+                content={<CustomTooltip t={t} />}
                 cursor={{ strokeDasharray: "3 3" }}
               />
               <ReferenceLine
@@ -287,7 +292,7 @@ export function BubbleChart({ projects }: BubbleChartProps) {
                 strokeDasharray="5 5"
                 opacity={0.4}
                 label={{
-                  value: "高活跃度",
+                  value: t.risingStars,
                   position: "insideTopRight",
                   fill: "hsl(var(--primary))",
                   fontSize: 10,
@@ -299,7 +304,7 @@ export function BubbleChart({ projects }: BubbleChartProps) {
                 strokeDasharray="5 5"
                 opacity={0.4}
                 label={{
-                  value: "高 Star 数",
+                  value: t.avgStars,
                   position: "insideTopLeft",
                   fill: "hsl(var(--primary))",
                   fontSize: 10,
@@ -354,7 +359,7 @@ export function BubbleChart({ projects }: BubbleChartProps) {
               <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/60" />
               <div className="h-3 w-3 rounded-full bg-muted-foreground" />
             </div>
-            <span className="text-xs text-muted-foreground">社区规模（小 → 大）</span>
+            <span className="text-xs text-muted-foreground">{t.communityScale}</span>
           </div>
         </div>
       </CardContent>

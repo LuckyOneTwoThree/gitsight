@@ -1,16 +1,23 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react"
 import { useTheme } from "next-themes"
 import { getDictionary, type Locale, type Dictionary } from "@/lib/i18n"
 
+interface LlmProviderUI {
+  id: string
+  provider: string
+  base_url: string
+  model: string
+  hasApiKey: boolean
+}
+
 interface AppConfig {
   github_token: string
-  llm_api_key: string
-  llm_provider: string
-  llm_model: string
   language: string
   theme: string
+  llm_providers: LlmProviderUI[]
+  llm_active_provider_id: string
 }
 
 interface AppContextValue {
@@ -38,6 +45,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [locale, setLocaleState] = useState<Locale>("zh")
   const { theme: nextTheme, setTheme: setNextTheme } = useTheme()
+  const mountedRef = useRef(false)
+  const syncedRef = useRef(false)
 
   const dict = getDictionary(locale)
 
@@ -57,20 +66,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    mountedRef.current = true
     void refreshConfig()
+    return () => { mountedRef.current = false }
   }, [refreshConfig])
 
-  // Sync config theme and language on initial load
+  // Sync config theme and language on initial load only (once)
   useEffect(() => {
-    if (config?.theme) {
+    if (!mountedRef.current || syncedRef.current) return
+    if (!config) return
+    syncedRef.current = true
+    if (config.theme) {
       setNextTheme(config.theme)
     }
-    if (config?.language) {
+    if (config.language) {
       setLocaleState(config.language as Locale)
     }
-  }, [config?.theme, config?.language, setNextTheme])
+  }, [config, setNextTheme])
 
-  const isConfigured = Boolean(config?.github_token) && Boolean(config?.llm_api_key)
+  const isConfigured = Boolean(config?.github_token) && Boolean(config?.llm_providers?.some(p => p.hasApiKey))
 
   const setLocale = useCallback(async (next: Locale) => {
     setLocaleState(next)
@@ -80,7 +94,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ language: next }),
       })
-      // Update config locally so settings page picks up the change
       setConfig((prev) => prev ? { ...prev, language: next } : prev)
     } catch {}
   }, [])
@@ -93,7 +106,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ theme: next }),
       })
-      // Update config locally so settings page picks up the change
       setConfig((prev) => prev ? { ...prev, theme: next } : prev)
     } catch {}
   }, [setNextTheme])

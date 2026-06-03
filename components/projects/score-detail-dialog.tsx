@@ -85,7 +85,7 @@ export function ScoreDetailDialog({ score, repoName, children }: ScoreDetailDial
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Gauge className="h-5 w-5 text-primary" />
-            RepoIntel Score — {repoName}
+            GitSight Score — {repoName}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-6 pt-2">

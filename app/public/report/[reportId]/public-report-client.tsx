@@ -18,6 +18,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { QualityBadge } from "@/lib/report-quality-utils"
+import type { Dictionary } from "@/lib/i18n"
+import { useApp } from "@/components/app-provider"
 
 interface PublicReportData {
   repo: {
@@ -41,19 +43,11 @@ interface PublicReportData {
   generated_at: string | null
 }
 
-const sectionLabels: Record<string, string> = {
-  tldr: "项目速览",
-  reverse_prd: "逆向 PRD",
-  architecture: "架构分析",
-  code_wiki: "代码百科",
-  timeline: "演进时间线",
-  tech_stack: "技术栈",
-  community: "社区健康",
-  contribution_guide: "贡献指南",
-}
 
 export function PublicReportPage() {
   const params = useParams<{ reportId: string }>()
+  const { dict } = useApp()
+  const t = dict.publicReport
   const [data, setData] = useState<PublicReportData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -63,12 +57,12 @@ export function PublicReportPage() {
       try {
         const res = await fetch(`/api/public/reports/${params.reportId}`)
         if (!res.ok) {
-          setError(res.status === 404 ? "报告不存在或尚未生成" : "加载失败")
+          setError(res.status === 404 ? t.notFoundDesc : dict.common.loadingFailed)
           return
         }
         setData(await res.json())
       } catch {
-        setError("网络错误，请稍后重试")
+        setError(dict.common.loadingFailed)
       } finally {
         setLoading(false)
       }
@@ -81,7 +75,7 @@ export function PublicReportPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">加载报告中...</p>
+          <p className="text-sm text-muted-foreground">{dict.common.loading}</p>
         </div>
       </div>
     )
@@ -92,11 +86,11 @@ export function PublicReportPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <FileText className="h-12 w-12 text-muted-foreground" />
-          <p className="text-lg font-medium text-foreground">{error || "报告未找到"}</p>
+          <p className="text-lg font-medium text-foreground">{error || t.notFound}</p>
           <Link href="/">
             <Button variant="outline" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              返回首页
+              {t.backToHome}
             </Button>
           </Link>
         </div>
@@ -116,11 +110,11 @@ export function PublicReportPage() {
             <Link href="/">
               <Button variant="ghost" size="sm" className="gap-2">
                 <ArrowLeft className="h-4 w-4" />
-                RepoIntel
+                GitSight
               </Button>
             </Link>
             <span className="text-muted-foreground">/</span>
-            <span className="text-sm text-muted-foreground">公开报告</span>
+            <span className="text-sm text-muted-foreground">{t.title}</span>
           </div>
 
           {repo && (
@@ -140,7 +134,7 @@ export function PublicReportPage() {
                 <p className="text-muted-foreground">{repo.description}</p>
               )}
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Badge variant="outline">{sectionLabels[data.section_type] || data.section_type}</Badge>
+                <Badge variant="outline">{getSectionLabel(t, data.section_type)}</Badge>
                 {repo.language && (
                   <Badge variant="secondary">{repo.language}</Badge>
                 )}
@@ -157,7 +151,7 @@ export function PublicReportPage() {
             <CardContent className="flex flex-wrap items-center gap-4 py-3 px-4">
               <div className="flex items-center gap-2">
                 <ShieldCheck className={cn("h-5 w-5", quality.passed ? "text-primary" : "text-muted-foreground")} />
-                <span className="text-sm font-medium">质量评分</span>
+                <span className="text-sm font-medium">{t.qualityScore}</span>
                 <span className={cn(
                   "text-lg font-bold",
                   quality.score >= 82 ? "text-primary" : quality.score >= 60 ? "text-chart-3" : "text-destructive"
@@ -168,7 +162,7 @@ export function PublicReportPage() {
               <div className="h-4 w-px bg-border" />
               <div className="flex items-center gap-1.5 text-sm">
                 <Eye className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">证据支撑</span>
+                <span className="text-muted-foreground">{t.evidenceSupport}</span>
                 <span className="font-medium text-foreground">{quality.evidenceRate}</span>
               </div>
               <div className="h-4 w-px bg-border" />
@@ -179,14 +173,14 @@ export function PublicReportPage() {
                   <AlertTriangle className="h-4 w-4 text-yellow-500" />
                 )}
                 <span className="text-muted-foreground">
-                  {quality.hasUnknowns ? "已声明未知项" : "未声明未知项"}
+                  {quality.hasUnknowns ? t.declaredUnknowns : t.undeclaredUnknowns}
                 </span>
               </div>
               {quality.critiqueScore !== null && (
                 <>
                   <div className="h-4 w-px bg-border" />
                   <div className="flex items-center gap-1.5 text-sm">
-                    <span className="text-muted-foreground">审稿评分</span>
+                    <span className="text-muted-foreground">{t.critiqueScore}</span>
                     <span className="font-medium text-foreground">{quality.critiqueScore}/100</span>
                   </div>
                 </>
@@ -194,7 +188,7 @@ export function PublicReportPage() {
               {data.generated_by && (
                 <>
                   <div className="h-4 w-px bg-border" />
-                  <span className="text-xs text-muted-foreground">由 {data.generated_by} 生成</span>
+                  <span className="text-xs text-muted-foreground">{t.generatedByModel.replace("{model}", data.generated_by || "")}</span>
                 </>
               )}
             </CardContent>
@@ -203,11 +197,11 @@ export function PublicReportPage() {
           <Card className="mb-6 border-border bg-muted/30">
             <CardContent className="flex items-center gap-3 py-3 px-4">
               <ShieldCheck className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">该报告未经质量分析（Fast 模式生成，未经过证据链提取与双重审稿）</span>
+              <span className="text-sm text-muted-foreground">{t.noQualityAnalysis}</span>
               {data.generated_by && (
                 <>
                   <div className="h-4 w-px bg-border" />
-                  <span className="text-xs text-muted-foreground">由 {data.generated_by} 生成</span>
+                  <span className="text-xs text-muted-foreground">{t.generatedByModel.replace("{model}", data.generated_by || "")}</span>
                 </>
               )}
             </CardContent>
@@ -227,14 +221,14 @@ export function PublicReportPage() {
             <CardContent className="py-8">
               <Sparkles className="h-8 w-8 text-primary mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                生成你自己的项目分析
+                {t.generateYourOwn}
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                RepoIntel 提供证据链支撑、双重审稿的深度项目分析报告
+                {t.evidenceChainDesc}
               </p>
               <Link href="/">
                 <Button className="gap-2">
-                  开始使用 RepoIntel
+                  {t.startUsingGitSight}
                   <ArrowLeft className="h-4 w-4 rotate-180" />
                 </Button>
               </Link>
@@ -349,6 +343,8 @@ function ObjectCard({ data }: { data: Record<string, unknown> }) {
 }
 
 function InlineContent({ text }: { text: string }) {
+  const { dict } = useApp()
+  const t = dict.publicReport
   const parts = text.split(/(\*\*[^*]+\*\*|\[source:\s*\w+\])/g)
   return (
     <>
@@ -367,9 +363,9 @@ function InlineContent({ text }: { text: string }) {
           }
           const labelMap: Record<string, string> = {
             readme: "README",
-            metadata: "元数据",
-            inferred: "推断",
-            unknown: "未知",
+            metadata: t.sourceMetadata,
+            inferred: t.sourceInferred,
+            unknown: t.sourceUnknown,
           }
           return (
             <Badge key={i} variant="outline" className={cn("text-[10px] px-1.5 py-0 mx-0.5", colorMap[sourceType] || colorMap.unknown)}>
@@ -384,36 +380,38 @@ function InlineContent({ text }: { text: string }) {
 }
 
 function formatFieldLabel(key: string): string {
+  const { dict } = useApp()
+  const kl = dict.publicReport.keyLabels
   const labels: Record<string, string> = {
-    title: "标题",
-    summary: "摘要",
-    problem: "核心问题",
-    core_capabilities: "核心能力",
-    suitable_users: "适用用户",
-    cover_summary: "概览",
-    positioning: "定位",
-    target_users_and_jtbd: "目标用户与任务",
-    feature_system: "功能体系",
-    tech_stack: "技术栈",
-    architecture_summary: "架构概览",
-    modules: "模块",
-    quickstart: "快速上手",
-    entry_points: "入口点",
-    critical_path: "关键路径",
-    mvp_scope: "MVP 范围",
-    milestones: "里程碑",
-    evolution_pattern: "演进模式",
-    categories: "分类",
-    assessment: "评估",
-    health_score: "健康评分",
-    strengths: "优势",
-    concerns: "关注点",
-    getting_started: "入门指南",
-    contribution_areas: "贡献方向",
-    pr_process: "PR 流程",
-    confidence: "置信度",
-    evidence_refs: "证据引用",
-    source_tags: "来源标记",
+    title: kl.title,
+    summary: kl.summary,
+    problem: kl.problem,
+    core_capabilities: kl.core_capabilities,
+    suitable_users: kl.suitable_users,
+    cover_summary: kl.cover_summary,
+    positioning: kl.positioning,
+    target_users_and_jtbd: kl.target_users_and_jtbd,
+    feature_system: kl.feature_system,
+    tech_stack: kl.tech_stack,
+    architecture_summary: kl.architecture_summary,
+    modules: kl.modules,
+    quickstart: kl.quickstart,
+    entry_points: kl.entry_points,
+    critical_path: kl.critical_path,
+    mvp_scope: kl.mvp_scope,
+    milestones: kl.milestones,
+    evolution_pattern: kl.evolution_pattern,
+    categories: kl.categories,
+    assessment: kl.assessment,
+    health_score: kl.health_score,
+    strengths: kl.strengths,
+    concerns: kl.concerns,
+    getting_started: kl.getting_started,
+    contribution_areas: kl.contribution_areas,
+    pr_process: kl.pr_process,
+    confidence: kl.confidence,
+    evidence_refs: kl.evidence_refs,
+    source_tags: kl.source_tags,
   }
 
   if (labels[key]) return labels[key]
@@ -421,4 +419,18 @@ function formatFieldLabel(key: string): string {
   return key
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function getSectionLabel(t: Dictionary["publicReport"], sectionType: string): string {
+  const map: Record<string, string> = {
+    tldr: t.sectionTldr,
+    reverse_prd: t.sectionReversePrd,
+    architecture: t.sectionArchitecture,
+    code_wiki: t.sectionCodeWiki,
+    timeline: t.sectionTimeline,
+    tech_stack: t.sectionTechStack,
+    community: t.sectionCommunity,
+    contribution_guide: t.sectionContributionGuide,
+  }
+  return map[sectionType] || sectionType
 }

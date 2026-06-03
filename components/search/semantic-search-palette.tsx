@@ -20,110 +20,54 @@ import {
   Brain,
   Rocket,
   ArrowRight,
-  Clock,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useApp } from "@/components/app-provider";
 
-const hotSearchIntents = [
-  {
-    id: 1,
-    text: "本周飙升的 Rust Web3 项目",
-    icon: TrendingUp,
-    color: "text-orange-400",
-  },
-  {
-    id: 2,
-    text: "适合单人开发的低代码平台",
-    icon: Code2,
-    color: "text-blue-400",
-  },
-  {
-    id: 3,
-    text: "医疗行业轻量级图数据库",
-    icon: Database,
-    color: "text-emerald-400",
-  },
-  {
-    id: 4,
-    text: "AI Agent 开发框架对比",
-    icon: Brain,
-    color: "text-purple-400",
-  },
-  {
-    id: 5,
-    text: "新兴 LLM 应用脚手架",
-    icon: Rocket,
-    color: "text-pink-400",
-  },
-  {
-    id: 6,
-    text: "高性能实时协作编辑器",
-    icon: Zap,
-    color: "text-yellow-400",
-  },
+const hotSearchIntentKeys = [
+  { id: 1, key: "example1" as const, icon: TrendingUp, color: "text-orange-400" },
+  { id: 2, key: "example2" as const, icon: Code2, color: "text-blue-400" },
+  { id: 3, key: "example3" as const, icon: Database, color: "text-emerald-400" },
+  { id: 4, key: "example4" as const, icon: Brain, color: "text-purple-400" },
+  { id: 5, key: "example5" as const, icon: Rocket, color: "text-pink-400" },
+  { id: 6, key: "example6" as const, icon: Zap, color: "text-yellow-400" },
 ];
 
 interface IntentTag {
-  type: "领域" | "类别" | "特性" | "语言" | "场景" | "规模";
+  type: "domain" | "category" | "feature" | "language" | "scenario" | "scale";
   value: string;
 }
 
+const tagTypeMap: Record<string, "tagDomain" | "tagCategory" | "tagFeature" | "tagLanguage" | "tagScenario" | "tagScale"> = {
+  domain: "tagDomain",
+  category: "tagCategory",
+  feature: "tagFeature",
+  language: "tagLanguage",
+  scenario: "tagScenario",
+  scale: "tagScale",
+};
+
 function getTagColor(type: IntentTag["type"]): string {
   const colors: Record<IntentTag["type"], string> = {
-    领域: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-    类别: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    特性: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-    语言: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-    场景: "bg-pink-500/20 text-pink-400 border-pink-500/30",
-    规模: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+    domain: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    category: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    feature: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    language: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+    scenario: "bg-pink-500/20 text-pink-400 border-pink-500/30",
+    scale: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   };
   return colors[type];
-}
-
-function AIListeningIndicator({ isActive }: { isActive: boolean }) {
-  return (
-    <div className="relative flex items-center gap-2">
-      <div className="relative">
-        <div
-          className={cn(
-            "absolute inset-0 rounded-full transition-all duration-1000",
-            isActive
-              ? "animate-ping bg-primary/40"
-              : "bg-muted-foreground/20"
-          )}
-        />
-        <div
-          className={cn(
-            "relative z-10 h-2.5 w-2.5 rounded-full transition-colors duration-300",
-            isActive ? "bg-primary" : "bg-muted-foreground/50"
-          )}
-        />
-        {isActive && (
-          <div
-            className="absolute inset-0 animate-pulse rounded-full bg-primary/30"
-            style={{ animationDuration: "2s" }}
-          />
-        )}
-      </div>
-      <span
-        className={cn(
-          "text-xs font-medium transition-colors duration-300",
-          isActive ? "text-primary" : "text-muted-foreground"
-        )}
-      >
-        {isActive ? "AI 正在监听" : "AI 待命中"}
-      </span>
-    </div>
-  );
 }
 
 function IntentParser({
   tags,
   isLoading,
+  t,
 }: {
   tags: IntentTag[];
   isLoading: boolean;
+  t: ReturnType<typeof useApp>["dict"]["searchPalette"];
 }) {
   if (tags.length === 0 && !isLoading) return null;
 
@@ -131,11 +75,14 @@ function IntentParser({
     <div className="flex flex-col gap-3 rounded-lg border border-border/50 bg-card/50 p-4">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium text-foreground">AI 意图拆解</span>
+        <span className="text-sm font-medium text-foreground">{t.intentParsing}</span>
         {isLoading && (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
         )}
       </div>
+      {isLoading && tags.length === 0 && (
+        <p className="text-xs text-muted-foreground">{t.parsingIntent}</p>
+      )}
       {tags.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {tags.map((tag, index) => (
@@ -150,7 +97,7 @@ function IntentParser({
                   getTagColor(tag.type)
                 )}
               >
-                <span className="opacity-70">{tag.type}:</span>
+                <span className="opacity-70">{t[tagTypeMap[tag.type]]}:</span>
                 <span>{tag.value}</span>
               </Badge>
             </React.Fragment>
@@ -164,9 +111,11 @@ function IntentParser({
 function QuickActionTile({
   intent,
   onClick,
+  t,
 }: {
-  intent: (typeof hotSearchIntents)[0];
+  intent: (typeof hotSearchIntentKeys)[0];
   onClick: () => void;
+  t: ReturnType<typeof useApp>["dict"]["searchPalette"];
 }) {
   const Icon = intent.icon;
 
@@ -184,7 +133,7 @@ function QuickActionTile({
         <Icon className="h-4 w-4" />
       </div>
       <span className="flex-1 text-sm text-foreground/90 transition-colors group-hover:text-foreground">
-        {intent.text}
+        {t[intent.key]}
       </span>
       <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
     </button>
@@ -200,11 +149,16 @@ export function SemanticSearchPalette({
   open: controlledOpen,
   onOpenChange,
 }: SemanticSearchPaletteProps) {
+  const { dict } = useApp();
+  const t = dict.searchPalette;
   const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [intentTags, setIntentTags] = useState<IntentTag[]>([]);
+  const [isParsingIntent, setIsParsingIntent] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setIsOpen = onOpenChange || setInternalOpen;
@@ -230,6 +184,47 @@ export function SemanticSearchPalette({
     }
   }, [isOpen]);
 
+  // Debounced intent parsing
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (!query.trim() || query.trim().length < 2) {
+      setIntentTags([]);
+      setIsParsingIntent(false);
+      return;
+    }
+
+    setIsParsingIntent(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/search/semantic", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: query.trim(), parseIntentOnly: true }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.intentTags) {
+            setIntentTags(data.intentTags);
+          }
+        }
+      } catch {
+        // ignore parse errors
+      } finally {
+        setIsParsingIntent(false);
+      }
+    }, 600);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [query]);
+
   const handleSearch = useCallback(async (searchText: string) => {
     if (!searchText.trim() || isSearching) return;
 
@@ -240,6 +235,7 @@ export function SemanticSearchPalette({
       router.push(`/search/results?${searchParams.toString()}`);
       setIsOpen(false);
       setQuery("");
+      setIntentTags([]);
     } finally {
       setIsSearching(false);
     }
@@ -258,13 +254,16 @@ export function SemanticSearchPalette({
     handleSearch(text);
   };
 
+  const showIntentParser = intentTags.length > 0 || isParsingIntent;
+  const showHotIntents = !isSearching && !showIntentParser;
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent
         className="top-[20%] max-w-2xl translate-y-0 gap-0 overflow-hidden border-border/50 bg-background/95 p-0 backdrop-blur-xl sm:rounded-xl"
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">AI 语义搜索</DialogTitle>
+        <DialogTitle className="sr-only">{t.title}</DialogTitle>
 
         <form onSubmit={handleSubmit}>
           <div className="flex items-center gap-3 border-b border-border/50 px-4 py-4">
@@ -274,7 +273,7 @@ export function SemanticSearchPalette({
               type="text"
               value={query}
               onChange={handleInputChange}
-              placeholder="例如：寻找医疗行业的轻量级图数据库平替..."
+              placeholder={t.placeholder}
               className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
               autoComplete="off"
               autoCorrect="off"
@@ -283,9 +282,11 @@ export function SemanticSearchPalette({
             />
             {isSearching ? (
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            ) : (
-              <AIListeningIndicator isActive={query.length > 0} />
-            )}
+            ) : isParsingIntent ? (
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            ) : query.length > 0 ? (
+              <Sparkles className="h-4 w-4 text-primary" />
+            ) : null}
           </div>
         </form>
 
@@ -294,22 +295,27 @@ export function SemanticSearchPalette({
             {isSearching && (
               <div className="flex items-center justify-center gap-3 py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">AI 正在搜索并分析...</span>
+                <span className="text-sm text-muted-foreground">{t.searching}</span>
               </div>
             )}
 
-            {!isSearching && (
+            {!isSearching && showIntentParser && (
+              <IntentParser tags={intentTags} isLoading={isParsingIntent} t={t} />
+            )}
+
+            {showHotIntents && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  <span>热门搜索意图</span>
+                  <span>{t.hotSearchIntents}</span>
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {hotSearchIntents.map((intent) => (
+                  {hotSearchIntentKeys.map((intent) => (
                     <QuickActionTile
                       key={intent.id}
                       intent={intent}
-                      onClick={() => handleQuickSearch(intent.text)}
+                      onClick={() => handleQuickSearch(t[intent.key])}
+                      t={t}
                     />
                   ))}
                 </div>
@@ -322,11 +328,11 @@ export function SemanticSearchPalette({
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <Kbd>Enter</Kbd>
-              <span>搜索</span>
+              <span>{t.searchButton}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Kbd>Esc</Kbd>
-              <span>关闭</span>
+              <span>{t.closeButton}</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -334,7 +340,7 @@ export function SemanticSearchPalette({
               <span className="text-[10px]">⌘</span>
             </Kbd>
             <Kbd>K</Kbd>
-            <span>快速唤起</span>
+            <span>{t.quickInvoke}</span>
           </div>
         </div>
       </DialogContent>
@@ -344,6 +350,8 @@ export function SemanticSearchPalette({
 
 export function SearchTrigger({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
+  const { dict } = useApp();
+  const t = dict.searchPalette;
 
   return (
     <>
@@ -355,7 +363,7 @@ export function SearchTrigger({ className }: { className?: string }) {
         )}
       >
         <Search className="h-4 w-4" />
-        <span className="flex-1 text-left">AI 语义搜索...</span>
+        <span className="flex-1 text-left">{t.aiSemanticSearch}</span>
         <div className="flex items-center gap-1">
           <Kbd className="h-5 min-w-5">
             <span className="text-[10px]">⌘</span>

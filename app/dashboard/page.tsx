@@ -8,7 +8,22 @@ import { Sparkline } from "@/components/charts/sparkline";
 import { Card, CardContent } from "@/components/ui/card";
 import { LANGUAGE_COLORS } from "@/lib/repo-api";
 import { useApp } from "@/components/app-provider";
-import { BarChart3, Star, TrendingUp, Coins } from "lucide-react";
+import { BarChart3, Star, TrendingUp, Coins, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+interface AnalysisReportItem {
+  id: number;
+  repo_full_name: string;
+  repo_owner: string;
+  repo_name: string;
+  section_type: string;
+  mode: string;
+  language: string;
+  generated_by: string | null;
+  generated_at: string | null;
+  updated_at: string;
+  is_stale: boolean;
+}
 
 interface DashboardData {
   total_projects: number;
@@ -30,9 +45,14 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
+function formatDate(value: string) {
+  return new Date(value).toLocaleString();
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [tokenData, setTokenData] = useState<{ total_tokens: number; total_reports: number; by_model: Array<{ model: string; report_count: number; total_tokens: number }> } | null>(null);
+  const [recentReports, setRecentReports] = useState<AnalysisReportItem[]>([]);
   const { dict } = useApp();
   const t = dict.dashboard;
 
@@ -58,8 +78,21 @@ export default function DashboardPage() {
         // ignore
       }
     }
+    async function loadRecentReports() {
+      try {
+        const res = await fetch("/api/user/workspace");
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!cancelled && json.analysis_reports) {
+          setRecentReports(json.analysis_reports.slice(0, 5));
+        }
+      } catch {
+        // ignore
+      }
+    }
     load();
     loadTokenUsage();
+    loadRecentReports();
     return () => { cancelled = true; };
   }, []);
 
@@ -236,6 +269,38 @@ export default function DashboardPage() {
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">{t.tokenUsageEmpty}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Analysis */}
+          <Card className="border-border bg-card min-w-0">
+            <CardContent className="p-4 md:p-5">
+              <h2 className="mb-4 flex items-center justify-between text-sm font-medium text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> {t.recentAnalysis}
+                </span>
+                <Link href="/profile" className="text-xs text-primary hover:underline">
+                  {t.viewAll}
+                </Link>
+              </h2>
+              {recentReports.length > 0 ? (
+                <div className="space-y-2">
+                  {recentReports.map((report) => (
+                    <Link
+                      key={report.id}
+                      href={`/repo/${report.repo_owner}/${report.repo_name}`}
+                      className="flex items-center gap-2 md:gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-accent"
+                    >
+                      <span className="flex-1 truncate text-sm text-foreground">{report.repo_full_name}</span>
+                      <Badge variant="secondary" className="shrink-0 text-[10px] px-1.5 py-0">{dict.profile.reportTypeLabels[report.section_type as keyof typeof dict.profile.reportTypeLabels] || report.section_type}</Badge>
+                      {report.is_stale && <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 text-amber-500">{t.needRefresh}</Badge>}
+                      <span className="shrink-0 text-xs text-muted-foreground">{formatDate(report.generated_at || report.updated_at)}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">{t.recentAnalysisEmpty}</p>
               )}
             </CardContent>
           </Card>

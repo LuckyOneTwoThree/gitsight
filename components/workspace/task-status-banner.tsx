@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { AlertTriangle, Clock3, Loader2, X } from "lucide-react"
+import { useApp } from "@/components/app-provider"
 import { Button } from "@/components/ui/button"
 
 interface WorkspaceTask {
@@ -20,6 +21,8 @@ interface WorkspaceResponse {
 }
 
 export function TaskStatusBanner() {
+  const { dict } = useApp()
+  const t = dict.taskBanner
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null)
   const [dismissedKey, setDismissedKey] = useState<string | null>(null)
 
@@ -30,12 +33,12 @@ export function TaskStatusBanner() {
 
   const label = useMemo(() => {
     if (activeCount > 0 && failedCount > 0) {
-      return `${activeCount} 个任务生成中，${failedCount} 个任务失败`
+      return `${activeCount} ${t.generating}, ${failedCount} ${t.failed}`
     }
     if (activeCount > 0) {
-      return `${activeCount} 个报告正在后台生成`
+      return `${activeCount} ${t.generatingInBackground}`
     }
-    return `${failedCount} 个任务生成失败`
+    return `${failedCount} ${t.generationFailed}`
   }, [activeCount, failedCount])
 
   useEffect(() => {
@@ -80,15 +83,15 @@ export function TaskStatusBanner() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Clock3 className="h-4 w-4 text-muted-foreground" />
-            后台任务同步中
+            {t.syncing}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{label}</p>
           <div className="mt-3 flex items-center gap-2">
             <Button size="sm" asChild>
-              <Link href="/profile">查看任务中心</Link>
+              <Link href="/profile">{t.viewTaskCenter}</Link>
             </Button>
             <Button size="sm" variant="outline" onClick={() => setDismissedKey(visibleKey)}>
-              暂时隐藏
+              {t.dismissTemporarily}
             </Button>
           </div>
         </div>
@@ -96,7 +99,7 @@ export function TaskStatusBanner() {
           type="button"
           className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           onClick={() => setDismissedKey(visibleKey)}
-          aria-label="隐藏任务提示"
+          aria-label={t.dismissTemporarily}
         >
           <X className="h-4 w-4" />
         </button>

@@ -1,4 +1,5 @@
-import type { RepoDetail, AnalysisSection } from "@/lib/mock-repo-data"
+import type { RepoDetail, AnalysisSection } from "@/lib/analysis-sections"
+import type { ProjectData } from "@/components/projects/project-card"
 
 export const LANGUAGE_COLORS: Record<string, string> = {
   TypeScript: "#3178c6",
@@ -98,6 +99,7 @@ export const frontendToBackendSection: Record<string, string> = {
   "tech-stack": "tech_stack",
   community: "community",
   "contribution-guide": "contribution_guide",
+  supply_chain: "supply_chain",
 }
 
 export const backendToFrontendSection: Record<string, string> = Object.fromEntries(
@@ -154,4 +156,43 @@ export function applyAnalysisStatuses(
         : section.cachedAt,
     }
   })
+}
+
+export function repoToProjectData(repo: ApiRepo): ProjectData {
+  const synced = repo.synced_at ? new Date(repo.synced_at) : null;
+  const now = Date.now();
+  let lastUpdate = "未知";
+  if (synced) {
+    const diffMs = now - synced.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 60) lastUpdate = `${diffMin}分钟前`;
+    else if (diffMin < 1440) lastUpdate = `${Math.floor(diffMin / 60)}小时前`;
+    else lastUpdate = `${Math.floor(diffMin / 1440)}天前`;
+  }
+
+  return {
+    id: String(repo.id),
+    name: repo.name,
+    owner: repo.owner,
+    ownerAvatar: `https://github.com/${repo.owner}.png`,
+    description: repo.description || "",
+    language: repo.language || "Unknown",
+    languageColor: LANGUAGE_COLORS[repo.language || ""] || "#8b8b8b",
+    stars: repo.stars,
+    forks: repo.forks,
+    starsToday: repo.stars_today || 0,
+    starsWeek: repo.stars_week || 0,
+    lastUpdate,
+    license: repo.license || "Unknown",
+    tags: Array.isArray(repo.topics) ? repo.topics : (typeof repo.topics === "string" ? JSON.parse(repo.topics || "[]") : []),
+    sparklineData: repo.sparkline_data && repo.sparkline_data.length > 0
+      ? repo.sparkline_data
+      : [repo.stars],
+    aiSummary: repo.description || "暂无 AI 摘要",
+    intelScore: repo.intel_score,
+    intelGrade: repo.intel_grade,
+    velocityScore: repo.velocity_score_detail,
+    communityScore: repo.community_score_detail,
+    maturityScore: repo.maturity_score_detail,
+  };
 }

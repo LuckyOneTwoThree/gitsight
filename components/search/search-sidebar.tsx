@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Zap,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 export interface LandscapeEntry {
   id: string;
@@ -55,6 +56,9 @@ export function SearchSidebar({
   compareRecommendation,
   relatedTopics,
 }: SearchSidebarProps) {
+  const { dict } = useApp();
+  const t = dict.searchSidebar;
+  const s = dict.search;
   const router = useRouter();
 
   const handleStartCompare = () => {
@@ -76,16 +80,16 @@ export function SearchSidebar({
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-info/20">
               <Map className="h-3.5 w-3.5 text-info" />
             </div>
-            相关赛道
+            {dict.landscape.title}
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            根据搜索意图自动匹配的技术领域
+            {s.intentParsing}
           </p>
         </CardHeader>
         <CardContent className="space-y-2">
           {landscapes.length === 0 && (
             <p className="py-3 text-center text-xs text-muted-foreground">
-              暂无匹配赛道
+              {dict.landscape.noProjects}
             </p>
           )}
           {landscapes.map((landscape) => (
@@ -104,7 +108,7 @@ export function SearchSidebar({
                 {landscape.trending && (
                   <Badge variant="outline" className="border-chart-3/30 bg-chart-3/10 text-chart-3 text-[10px]">
                     <TrendingUp className="mr-1 h-2.5 w-2.5" />
-                    热门
+                    {dict.dashboard.trendingThisWeek}
                   </Badge>
                 )}
               </div>
@@ -114,7 +118,7 @@ export function SearchSidebar({
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">
                   <Layers className="mr-1 inline h-3 w-3" />
-                  {landscape.projectCount} 个项目
+                  {landscape.projectCount} {dict.landscape.totalProjects}
                 </span>
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
               </div>
@@ -123,7 +127,7 @@ export function SearchSidebar({
           <Link href="/landscape">
             <Button variant="ghost" size="sm" className="w-full gap-1.5 text-muted-foreground hover:text-foreground">
               <Map className="h-3.5 w-3.5" />
-              浏览全部赛道图谱
+              {dict.landscape.title}
               <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
@@ -136,16 +140,16 @@ export function SearchSidebar({
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/20">
               <GitCompare className="h-3.5 w-3.5 text-primary" />
             </div>
-            横向对比推荐
+            {dict.compare.title}
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            基于搜索结果的最佳对比组合
+            {dict.compare.selectHint}
           </p>
         </CardHeader>
         <CardContent>
           {compareRecommendation.projects.length === 0 ? (
             <p className="py-3 text-center text-xs text-muted-foreground">
-              至少需要 2 个搜索结果才能推荐对比
+              {dict.compare.selectAtLeast2}
             </p>
           ) : (
             <>
@@ -187,7 +191,7 @@ export function SearchSidebar({
                 <div className="mb-4 rounded-lg bg-background/50 p-3">
                   <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-primary">
                     <Sparkles className="h-3 w-3" />
-                    推荐理由
+                    {s.intentParsing}
                   </div>
                   <p className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
                     {compareRecommendation.reason}
@@ -201,7 +205,7 @@ export function SearchSidebar({
                 onClick={handleStartCompare}
               >
                 <GitCompare className="h-3.5 w-3.5" />
-                开始横向对比
+                {dict.compare.title}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </>
@@ -215,13 +219,13 @@ export function SearchSidebar({
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-chart-3/20">
               <Zap className="h-3.5 w-3.5 text-chart-3" />
             </div>
-            相关话题
+            {t.tags}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {relatedTopics.length === 0 ? (
             <p className="py-3 text-center text-xs text-muted-foreground">
-              暂无相关话题
+              {dict.common.noData}
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -249,7 +253,7 @@ export function SearchSidebar({
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-chart-4/20">
               <Target className="h-3.5 w-3.5 text-chart-4" />
             </div>
-            快速操作
+            {dict.common.edit}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -259,7 +263,7 @@ export function SearchSidebar({
             className="w-full justify-start gap-2 border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <Users className="h-3.5 w-3.5" />
-            查看维护者活跃度分析
+            {dict.landscape.contributors}
           </Button>
           <Button
             variant="outline"
@@ -267,7 +271,7 @@ export function SearchSidebar({
             className="w-full justify-start gap-2 border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <TrendingUp className="h-3.5 w-3.5" />
-            导出趋势报告
+            {dict.dashboard.starTrend}
           </Button>
           <Button
             variant="outline"
@@ -275,7 +279,7 @@ export function SearchSidebar({
             className="w-full justify-start gap-2 border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <ExternalLink className="h-3.5 w-3.5" />
-            在 GitHub 中查看全部
+            GitHub
           </Button>
         </CardContent>
       </Card>

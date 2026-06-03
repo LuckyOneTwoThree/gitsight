@@ -12,8 +12,7 @@ import { GitHubRepoAnalyzer } from "@/components/repo/github-repo-analyzer";
 import { Sparkline } from "@/components/charts/sparkline";
 import { Badge } from "@/components/ui/badge";
 import type { ProjectData } from "@/components/projects/project-card";
-import type { ApiRepo } from "@/lib/repo-api";
-import { LANGUAGE_COLORS } from "@/lib/repo-api";
+import { repoToProjectData } from "@/lib/repo-api";
 import { toast } from "sonner";
 import { Star, TrendingUp, ArrowRight } from "lucide-react";
 import { useApp } from "@/components/app-provider";
@@ -23,6 +22,7 @@ const TrendingSidebar = dynamic(
 );
 
 function CompactTrendingStrip() {
+  const { dict } = useApp();
   const [items, setItems] = useState<Array<{ id: string; name: string; owner: string; stars: number; starsWeek: number; starsToday: number }>>([]);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ function CompactTrendingStrip() {
     <section className="xl:hidden">
       <div className="flex items-center gap-2 mb-2">
         <TrendingUp className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium text-muted-foreground">实时飙升</span>
+        <span className="text-sm font-medium text-muted-foreground">{dict.discover.trendingStrip}</span>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
         {items.map((item, i) => (
@@ -86,45 +86,6 @@ function CompactTrendingStrip() {
       </div>
     </section>
   );
-}
-
-function repoToProjectData(repo: ApiRepo): ProjectData {
-  const synced = repo.synced_at ? new Date(repo.synced_at) : null;
-  const now = Date.now();
-  let lastUpdate = "未知";
-  if (synced) {
-    const diffMs = now - synced.getTime();
-    const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 60) lastUpdate = `${diffMin}分钟前`;
-    else if (diffMin < 1440) lastUpdate = `${Math.floor(diffMin / 60)}小时前`;
-    else lastUpdate = `${Math.floor(diffMin / 1440)}天前`;
-  }
-
-  return {
-    id: String(repo.id),
-    name: repo.name,
-    owner: repo.owner,
-    ownerAvatar: `https://github.com/${repo.owner}.png`,
-    description: repo.description || "",
-    language: repo.language || "Unknown",
-    languageColor: LANGUAGE_COLORS[repo.language || ""] || "#8b8b8b",
-    stars: repo.stars,
-    forks: repo.forks,
-    starsToday: repo.stars_today || 0,
-    starsWeek: repo.stars_week || 0,
-    lastUpdate,
-    license: repo.license || "Unknown",
-    tags: Array.isArray(repo.topics) ? repo.topics : (typeof repo.topics === "string" ? JSON.parse(repo.topics || "[]") : []),
-    sparklineData: repo.sparkline_data && repo.sparkline_data.length > 0
-      ? repo.sparkline_data
-      : [repo.stars],
-    aiSummary: repo.description || "暂无 AI 摘要",
-    intelScore: repo.intel_score,
-    intelGrade: repo.intel_grade,
-    velocityScore: repo.velocity_score_detail,
-    communityScore: repo.community_score_detail,
-    maturityScore: repo.maturity_score_detail,
-  };
 }
 
 export default function HomePage() {
@@ -187,7 +148,7 @@ export default function HomePage() {
         const params = new URLSearchParams({ limit: String(limit), tab: activeTab, range: timeRange });
         if (languageFilter && languageFilter !== "all") params.set("language", languageFilter);
         const response = await fetch(`/api/projects?${params}`);
-        if (!response.ok) throw new Error("加载失败");
+        if (!response.ok) throw new Error(dict.common.loadingFailed);
         const payload = await response.json();
         if (cancelled) return;
         const mapped = (payload.data || []).map(repoToProjectData);
@@ -217,7 +178,7 @@ export default function HomePage() {
       setProjects((prev) => [...prev, ...mapped]);
       setHasMore(mapped.length >= 12);
     } catch {
-      toast.error("加载更多项目失败");
+      toast.error(dict.discover.loadMoreFailed);
     }
   }, [projects.length, activeTab, timeRange]);
 
@@ -229,7 +190,7 @@ export default function HomePage() {
       existing.push(fullName);
       sessionStorage.setItem(key, JSON.stringify(existing));
     }
-    toast.success(`已添加 ${project.name} 到对比列表`);
+    toast.success(`${dict.discover.addedToCompare} ${project.name}`);
     router.push("/compare");
   }, [router]);
 
@@ -244,14 +205,14 @@ export default function HomePage() {
       if (isWatched) {
         await fetch(`/api/watchlist?repo_id=${repoId}`, { method: "DELETE" });
         setWatchedIds((prev) => { const next = new Set(prev); next.delete(project.id); return next; });
-        toast.success(`已取消收藏 ${project.name}`);
+        toast.success(`${dict.discover.removedFromWatchlist} ${project.name}`);
       } else {
         await fetch("/api/watchlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ repo_id: repoId }) });
         setWatchedIds((prev) => new Set(prev).add(project.id));
-        toast.success(`已收藏 ${project.name}`);
+        toast.success(`${dict.discover.addedToWatchlist} ${project.name}`);
       }
     } catch {
-      toast.error("操作失败");
+      toast.error(dict.common.operationFailed);
     }
   }, [watchedIds]);
 
@@ -283,9 +244,9 @@ export default function HomePage() {
 
             <section>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-sm font-medium text-muted-foreground">数据概览</h2>
+                <h2 className="text-sm font-medium text-muted-foreground">{dict.discover.dataOverview}</h2>
                 <span className="text-xs text-muted-foreground">
-                  {lastFetchedAt ? `数据更新于 ${Math.max(1, Math.floor((Date.now() - lastFetchedAt.getTime()) / 60000))} 分钟前` : "加载中…"}
+                  {lastFetchedAt ? `${dict.discover.dataUpdatedPrefix} ${Math.max(1, Math.floor((Date.now() - lastFetchedAt.getTime()) / 60000))} ${dict.discover.dataUpdatedMinutesAgo}` : dict.discover.dataLoading}
                 </span>
               </div>
               <StatsCards />
@@ -343,12 +304,12 @@ export default function HomePage() {
             <section>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">
-                  {activeTab === "velocity" && "短期飙升项目"}
-                  {activeTab === "trending" && "热门项目榜单"}
-                  {activeTab === "new" && "新兴黑马项目"}
+                  {activeTab === "velocity" && dict.discover.shortTermSurging}
+                  {activeTab === "trending" && dict.discover.popularRanking}
+                  {activeTab === "new" && dict.discover.emergingDarkHorse}
                 </h2>
                 <span className="text-xs text-muted-foreground">
-                  共 {projects.length} 个项目
+                  {projects.length} {dict.discover.totalProjectsCount}
                 </span>
               </div>
               <ProjectGrid
@@ -368,7 +329,7 @@ export default function HomePage() {
                   className="rounded-md border border-border bg-card px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
                   onClick={handleLoadMore}
                 >
-                  加载更多项目
+                  {dict.discover.loadMore}
                 </button>
               </div>
             )}

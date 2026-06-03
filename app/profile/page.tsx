@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BarChart3, Download, FileText, GitCompare, Loader2, RotateCcw, Trash2, Zap } from "lucide-react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useApp } from "@/components/app-provider";
+import type { Dictionary } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,20 +85,10 @@ interface CompareReportItem {
   markdown: string | null;
 }
 
-const sectionLabels: Record<string, string> = {
-  tldr: "TL;DR",
-  reverse_prd: "逆向 PRD",
-  architecture: "架构分析",
-  code_wiki: "CodeWiki",
-  timeline: "时间线",
-  tech_stack: "技术栈",
-  community: "社区分析",
-  contribution_guide: "贡献指南",
-};
-
 export default function ProfilePage() {
   const { dict } = useApp();
   const t = dict.profile;
+  const sectionLabels = t.reportTypeLabels as Record<string, string>;
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,12 +100,12 @@ export default function ProfilePage() {
       const response = await fetch("/api/user/workspace");
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error?.message || `请求失败 (${response.status})`);
+        throw new Error(payload?.error?.message || `${t.requestFailed} (${response.status})`);
       }
       const payload = await response.json();
       setWorkspace(payload as WorkspaceResponse);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "加载失败");
+      setError(loadError instanceof Error ? loadError.message : dict.common.loadingFailed);
     } finally {
       setIsLoading(false);
     }
@@ -153,11 +144,11 @@ export default function ProfilePage() {
         : `/api/compare/analysis/${task.id}/retry`;
       const response = await fetch(url, { method: "POST" });
       if (!response.ok) {
-        throw new Error("重试请求失败");
+        throw new Error(t.retryFailed);
       }
       void loadWorkspace();
     } catch (retryError) {
-      setError(retryError instanceof Error ? retryError.message : "重试失败");
+      setError(retryError instanceof Error ? retryError.message : t.retryFailedShort);
     }
   };
 
@@ -194,17 +185,17 @@ export default function ProfilePage() {
           )}
 
           <div className="grid gap-4 grid-cols-2 xl:grid-cols-3">
-            <MetricCard label="分析报告" value={workspace?.stats.analysis_reports ?? 0} icon={FileText} />
-            <MetricCard label="对比报告" value={workspace?.stats.compare_reports ?? 0} icon={GitCompare} />
-            <MetricCard label="最近仓库" value={workspace?.stats.recent_repos ?? 0} icon={BarChart3} />
+            <MetricCard label={t.analysisReportsShort} value={workspace?.stats.analysis_reports ?? 0} icon={FileText} />
+            <MetricCard label={t.compareReportsShort} value={workspace?.stats.compare_reports ?? 0} icon={GitCompare} />
+            <MetricCard label={t.recentReposShort} value={workspace?.stats.recent_repos ?? 0} icon={BarChart3} />
           </div>
 
           <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="flex items-center justify-between text-base">
-                <span>任务中心</span>
+                <span>{t.taskCenter}</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  {workspace?.stats.active_tasks || 0} 个进行中 · {workspace?.stats.failed_tasks || 0} 个失败
+                  {workspace?.stats.active_tasks || 0} {t.activeTasks} · {workspace?.stats.failed_tasks || 0} {t.failedTasks}
                 </span>
               </CardTitle>
             </CardHeader>
@@ -215,18 +206,18 @@ export default function ProfilePage() {
                     <div key={`${task.type}-${task.id}`} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/20 p-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline">{task.type === "analysis" ? "项目分析" : "对比分析"}</Badge>
+                          <Badge variant="outline">{task.type === "analysis" ? t.projectAnalysis : t.compareAnalysis}</Badge>
                           <span className="font-medium text-foreground">
                             {task.type === "analysis"
                               ? `${task.repo_full_name} / ${sectionLabels[task.section_type] || task.section_type}`
                               : task.repos.map((repo) => `${repo.owner}/${repo.name}`).join(" vs ")}
                           </span>
                           <Badge variant={task.status === "failed" ? "destructive" : task.status === "completed" ? "secondary" : "outline"}>
-                            {getTaskStatusLabel(task.status)}
+                            {getTaskStatusLabel(task.status, t)}
                           </Badge>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          更新于 {formatDate(task.updated_at)}
+                          {t.updatedPrefix} {formatDate(task.updated_at)}
                           {task.error ? ` · ${task.error}` : ""}
                         </p>
                       </div>
@@ -234,16 +225,16 @@ export default function ProfilePage() {
                         {task.status === "failed" && (
                           <Button variant="outline" size="sm" onClick={() => void retryTask(task)}>
                             <RotateCcw className="mr-2 h-4 w-4" />
-                            重试
+                            {dict.common.retry}
                           </Button>
                         )}
                         {task.type === "analysis" ? (
                           <Button variant="outline" size="sm" asChild>
-                            <Link href={`/repo/${task.repo_owner}/${task.repo_name}`}>打开</Link>
+                            <Link href={`/repo/${task.repo_owner}/${task.repo_name}`}>{t.open}</Link>
                           </Button>
                         ) : (
                           <Button variant="outline" size="sm" asChild>
-                            <Link href="/compare">打开</Link>
+                            <Link href="/compare">{t.open}</Link>
                           </Button>
                         )}
                       </div>
@@ -251,14 +242,14 @@ export default function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState text="暂无生成任务。后续生成项目报告或对比报告后，会在这里同步状态。" />
+                <EmptyState text={t.noTasks} />
               )}
             </CardContent>
           </Card>
 
           <Card className="border-border bg-card">
             <CardHeader>
-              <CardTitle className="text-base">最近分析仓库</CardTitle>
+              <CardTitle className="text-base">{t.recentRepos}</CardTitle>
             </CardHeader>
             <CardContent>
               {workspace?.recent_repos.length ? (
@@ -279,14 +270,14 @@ export default function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState text="暂无最近分析仓库" />
+                <EmptyState text={t.noRecentRepos} />
               )}
             </CardContent>
           </Card>
 
           <Card className="border-border bg-card">
             <CardHeader>
-              <CardTitle className="text-base">我的分析报告</CardTitle>
+              <CardTitle className="text-base">{t.analysisReports}</CardTitle>
             </CardHeader>
             <CardContent>
               {workspace?.analysis_reports.length ? (
@@ -300,7 +291,7 @@ export default function ProfilePage() {
                           </Link>
                           <Badge variant="secondary">{sectionLabels[report.section_type] || report.section_type}</Badge>
                           <Badge variant="outline">{report.mode}</Badge>
-                          {report.is_stale && <Badge variant="outline" className="text-amber-500">需刷新</Badge>}
+                          {report.is_stale && <Badge variant="outline" className="text-amber-500">{t.needRefresh}</Badge>}
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {formatDate(report.generated_at || report.updated_at)} · {report.generated_by || "unknown"}
@@ -308,7 +299,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/repo/${report.repo_owner}/${report.repo_name}`}>查看</Link>
+                          <Link href={`/repo/${report.repo_owner}/${report.repo_name}`}>{t.view}</Link>
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => void deleteAnalysisReport(report.id)}>
                           <Trash2 className="h-4 w-4 text-muted-foreground" />
@@ -318,14 +309,14 @@ export default function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState text="暂无分析报告，去仓库详情页生成第一份报告吧" />
+                <EmptyState text={t.noReports} />
               )}
             </CardContent>
           </Card>
 
           <Card className="border-border bg-card">
             <CardHeader>
-              <CardTitle className="text-base">我的对比报告</CardTitle>
+              <CardTitle className="text-base">{t.compareReports}</CardTitle>
             </CardHeader>
             <CardContent>
               {workspace?.compare_reports.length ? (
@@ -351,11 +342,11 @@ export default function ProfilePage() {
                             onClick={() => downloadTextFile("repo-comparison.md", report.markdown || "", "text/markdown")}
                           >
                             <Download className="mr-2 h-4 w-4" />
-                            下载
+                            {t.download}
                           </Button>
                         )}
                         <Button variant="outline" size="sm" asChild>
-                          <Link href="/compare">继续对比</Link>
+                          <Link href="/compare">{t.continueCompare}</Link>
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => void deleteCompareReport(report.id)}>
                           <Trash2 className="h-4 w-4 text-muted-foreground" />
@@ -365,7 +356,7 @@ export default function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState text="暂无对比报告，去对比工作台生成第一份 Markdown 报告吧" />
+                <EmptyState text={t.noCompareReports} />
               )}
             </CardContent>
           </Card>
@@ -403,12 +394,12 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString();
 }
 
-function getTaskStatusLabel(status: WorkspaceTaskItem["status"]) {
+function getTaskStatusLabel(status: WorkspaceTaskItem["status"], t: Dictionary["profile"]) {
   const labels: Record<WorkspaceTaskItem["status"], string> = {
-    pending: "排队中",
-    running: "生成中",
-    completed: "已完成",
-    failed: "失败",
+    pending: t.statusPending,
+    running: t.statusRunning,
+    completed: t.statusCompleted,
+    failed: t.statusFailed,
   };
 
   return labels[status] || status;

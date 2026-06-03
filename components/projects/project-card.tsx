@@ -159,7 +159,7 @@ export function ProjectCard({
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  外部热议来源
+                  {t.externalBuzzSource}
                 </TooltipContent>
               </Tooltip>
             )}

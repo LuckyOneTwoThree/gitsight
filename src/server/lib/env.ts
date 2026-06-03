@@ -1,4 +1,4 @@
-import { readConfig } from "./desktop-config"
+import { readConfig, getActiveProvider } from "./desktop-config"
 
 declare global {
   var __repoIntelEnvValidated: boolean | undefined
@@ -6,14 +6,15 @@ declare global {
 
 export function getServerEnv() {
   const config = readConfig()
+  const active = getActiveProvider()
 
   return {
     githubToken: process.env.GITHUB_TOKEN || process.env.GH_TOKEN || config.github_token,
     githubApiBaseUrl: config.github_api_base_url || process.env.GITHUB_API_BASE_URL || "https://api.github.com",
-    llmProvider: config.llm_provider || process.env.LLM_PROVIDER || "openai",
-    llmApiKey: config.llm_api_key || process.env.LLM_API_KEY || "",
-    llmBaseUrl: config.llm_base_url || process.env.LLM_BASE_URL || "https://api.openai.com/v1",
-    llmModel: config.llm_model || process.env.LLM_MODEL || "gpt-4.1-mini",
+    llmProvider: active.provider || process.env.LLM_PROVIDER || "openai",
+    llmApiKey: active.apiKey || process.env.LLM_API_KEY || "",
+    llmBaseUrl: active.base_url || process.env.LLM_BASE_URL || "https://api.openai.com/v1",
+    llmModel: active.model || process.env.LLM_MODEL || "gpt-4.1-mini",
   }
 }
 
@@ -31,7 +32,7 @@ if (typeof process !== "undefined" && !globalThis.__repoIntelEnvValidated) {
   }
 
   if (warnings.length > 0) {
-    console.warn("[RepoIntel] Startup warnings:")
+    console.warn("[GitSight] Startup warnings:")
     warnings.forEach((w) => console.warn(`  - ${w}`))
   }
 }

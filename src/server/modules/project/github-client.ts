@@ -36,7 +36,7 @@ export class GitHubRepositoryNotFoundError extends Error {
 export async function fetchGitHubRepo(owner: string, name: string): Promise<RepoRecord> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
-    "User-Agent": "RepoIntel-MVP",
+    "User-Agent": "GitSight-MVP",
     ...(getServerEnv().githubToken
       ? {
           Authorization: `Bearer ${getServerEnv().githubToken}`,

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useApp } from "@/components/app-provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -29,6 +30,8 @@ import {
   X,
   Loader2,
   AlertCircle,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 
 interface IntentTag {
@@ -66,7 +69,7 @@ interface SemanticResult {
   }>;
 }
 
-function toSearchResultData(result: SemanticResult): SearchResultData {
+function toSearchResultData(result: SemanticResult, justNowLabel: string): SearchResultData {
   const repo = result.repo;
   return {
     id: String(repo.id),
@@ -80,7 +83,7 @@ function toSearchResultData(result: SemanticResult): SearchResultData {
     forks: repo.forks,
     starsToday: repo.stars_today,
     starsWeek: repo.stars_week,
-    lastUpdate: "刚刚",
+    lastUpdate: justNowLabel,
     license: repo.license || "",
     tags: (Array.isArray(repo.topics) ? repo.topics : (typeof repo.topics === "string" ? JSON.parse(repo.topics || "[]") : [])).slice(0, 5),
     sparklineData: repo.velocity_score > 0
@@ -129,11 +132,17 @@ export default function SearchResultsPage() {
 
 function SearchResultsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const query = searchParams.get("q") || "";
+  const { dict } = useApp();
+  const t = dict.searchResults;
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("relevance");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterLanguages, setFilterLanguages] = useState<string[]>([]);
+  const [filterMinScore, setFilterMinScore] = useState(0);
 
   const [results, setResults] = useState<SemanticResult[]>([]);
   const [intentTags, setIntentTags] = useState<IntentTag[]>([]);
@@ -141,6 +150,32 @@ function SearchResultsContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [relatedLandscapes, setRelatedLandscapes] = useState<LandscapeEntry[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+
+  const SAVED_KEY = "repo-intel:saved-searches";
+
+  useEffect(() => {
+    if (!query) { setIsSaved(false); return; }
+    try {
+      const saved: Array<{ id: string; query: string }> = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
+      setIsSaved(saved.some((s) => s.query === query));
+    } catch { setIsSaved(false); }
+  }, [query]);
+
+  const toggleSave = () => {
+    try {
+      const saved: Array<{ id: string; query: string; tags: string[]; alerts: boolean }> = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
+      if (isSaved) {
+        const updated = saved.filter((s) => s.query !== query);
+        localStorage.setItem(SAVED_KEY, JSON.stringify(updated));
+        setIsSaved(false);
+      } else {
+        const entry = { id: Date.now().toString(), query, tags: intentTags.map((t) => `${t.type}: ${t.value}`), alerts: false };
+        localStorage.setItem(SAVED_KEY, JSON.stringify([entry, ...saved]));
+        setIsSaved(true);
+      }
+    } catch {}
+  };
 
   const doSearch = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
@@ -168,7 +203,7 @@ function SearchResultsContent() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data?.error?.message || data?.error || "搜索失败");
+        throw new Error(data?.error?.message || data?.error || t.searchFailed);
       }
 
       const data = await response.json();
@@ -195,7 +230,7 @@ function SearchResultsContent() {
         localStorage.setItem(historyKey, JSON.stringify([entry, ...filtered].slice(0, 20)))
       } catch {}
     } catch (err) {
-      setError(err instanceof Error ? err.message : "搜索失败，请稍后重试");
+      setError(err instanceof Error ? err.message : t.searchFailedRetry);
     } finally {
       setIsLoading(false);
     }
@@ -274,13 +309,13 @@ function SearchResultsContent() {
       .slice(0, 3);
 
     const reasonParts: string[] = [];
-    reasonParts.push(`均为 ${lang} 项目`);
+    reasonParts.push(t.reasonSameLang.replace("{lang}", lang));
     if (commonTopics.length > 0) {
-      reasonParts.push(`共同关注 ${commonTopics.join("、")}`);
+      reasonParts.push(t.reasonCommonTopics.replace("{topics}", commonTopics.join("、")));
     }
     const starRange = `${Math.min(...selected.map((r) => r.repo.stars)).toLocaleString()}~${Math.max(...selected.map((r) => r.repo.stars)).toLocaleString()}`;
-    reasonParts.push(`Star 量级 ${starRange}`);
-    reasonParts.push("适合横向对比技术选型");
+    reasonParts.push(t.reasonStarRange.replace("{range}", starRange));
+    reasonParts.push(t.reasonTechSelection);
 
     return {
       projects: selected.map((r) => ({
@@ -307,7 +342,13 @@ function SearchResultsContent() {
       .map(([name, count]) => ({ name, count }));
   }, [results]);
 
-  const sortedResults = [...results].sort((a, b) => {
+  const filteredResults = results.filter((r) => {
+    if (filterLanguages.length > 0 && !filterLanguages.includes(r.repo.language || "")) return false;
+    if (filterMinScore > 0 && r.matchScore < filterMinScore) return false;
+    return true;
+  });
+
+  const sortedResults = [...filteredResults].sort((a, b) => {
     switch (sortBy) {
       case "stars":
         return b.repo.stars - a.repo.stars;
@@ -320,22 +361,24 @@ function SearchResultsContent() {
     }
   });
 
-  const searchResultCards = sortedResults.map(toSearchResultData);
+  const searchResultCards = sortedResults.map((r) => toSearchResultData(r, t.justNow));
 
-  const avgMatchScore = results.length > 0
-    ? Math.round(results.reduce((sum, r) => sum + r.matchScore, 0) / results.length)
+  const allLanguages = [...new Set(results.map((r) => r.repo.language).filter(Boolean))];
+
+  const avgMatchScore = filteredResults.length > 0
+    ? Math.round(filteredResults.reduce((sum, r) => sum + r.matchScore, 0) / filteredResults.length)
     : 0;
 
-  const topLanguages = [...new Set(results.map((r) => r.repo.language).filter(Boolean))];
-  const avgStars = results.length > 0
-    ? Math.round(results.reduce((sum, r) => sum + r.repo.stars, 0) / results.length)
+  const topLanguages = allLanguages.slice(0, 2);
+  const avgStars = filteredResults.length > 0
+    ? Math.round(filteredResults.reduce((sum, r) => sum + r.repo.stars, 0) / filteredResults.length)
     : 0;
 
-  const insights = results.length > 0 ? {
+  const insights = filteredResults.length > 0 ? {
     avgMatchScore,
-    topLanguage: topLanguages.slice(0, 2).join(" / ") || "N/A",
+    topLanguage: topLanguages.join(" / ") || "N/A",
     avgStars: avgStars >= 1000 ? `${(avgStars / 1000).toFixed(1)}k` : String(avgStars),
-    recentActivity: `${Math.round(results.filter((r) => r.matchScore >= 70).length / results.length * 100)}%`,
+    recentActivity: `${Math.round(filteredResults.filter((r) => r.matchScore >= 70).length / filteredResults.length * 100)}%`,
   } : undefined;
 
   return (
@@ -348,11 +391,11 @@ function SearchResultsContent() {
               <Link href="/search">
                 <Button variant="ghost" size="sm" className="gap-2">
                   <ArrowLeft className="h-4 w-4" />
-                  返回
+                  {dict.common.back}
                 </Button>
               </Link>
               <div className="h-6 w-px bg-border" />
-              <h1 className="text-lg font-semibold text-foreground">搜索结果</h1>
+              <h1 className="text-lg font-semibold text-foreground">{t.title}</h1>
             </div>
             <Button
               variant="outline"
@@ -360,19 +403,97 @@ function SearchResultsContent() {
               className="w-80 justify-start gap-2 border-border bg-muted/50 text-muted-foreground"
             >
               <Search className="h-4 w-4" />
-              <span className="flex-1 truncate text-left text-sm">{query || "搜索..."}</span>
+              <span className="flex-1 truncate text-left text-sm">{query || t.searchPlaceholder}</span>
               <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
                 ⌘K
               </kbd>
             </Button>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2 border-border" disabled>
-                <SlidersHorizontal className="h-4 w-4" />
-                高级筛选
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn("gap-2 border-border", isSaved && "border-primary text-primary")}
+                onClick={toggleSave}
+                disabled={!query}
+              >
+                {isSaved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+                {isSaved ? t.bookmarked : t.bookmark}
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn("gap-2 border-border", (filterLanguages.length > 0 || filterMinScore > 0) && "border-primary text-primary")}
+                onClick={() => setFilterOpen(!filterOpen)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                {dict.common.filter}
+                {(filterLanguages.length > 0 || filterMinScore > 0) && (
+                  <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
+                    {filterLanguages.length + (filterMinScore > 0 ? 1 : 0)}
+                  </Badge>
+                )}
+              </Button>
+              {(filterLanguages.length > 0 || filterMinScore > 0) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-muted-foreground"
+                  onClick={() => { setFilterLanguages([]); setFilterMinScore(0); }}
+                >
+                  {dict.common.clear}
+                </Button>
+              )}
             </div>
           </div>
-        </header>
+          {filterOpen && (
+            <div className="border-b border-border bg-muted/30 px-4 py-3 md:px-6">
+              <div className="flex flex-wrap items-center gap-4">
+                {allLanguages.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground shrink-0">{t.languageLabel}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {allLanguages.map((lang) => (
+                        <button
+                          key={lang}
+                          onClick={() => setFilterLanguages((prev) =>
+                            prev.includes(lang!) ? prev.filter((l) => l !== lang) : [...prev, lang!]
+                          )}
+                          className={cn(
+                            "rounded-md border px-2 py-0.5 text-xs transition-colors",
+                            filterLanguages.includes(lang!)
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/50"
+                          )}
+                        >
+                          {lang}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground shrink-0">{t.minMatchScore}</span>
+                  <div className="flex gap-1.5">
+                    {[0, 50, 70, 85].map((score) => (
+                      <button
+                        key={score}
+                        onClick={() => setFilterMinScore(score)}
+                        className={cn(
+                          "rounded-md border px-2 py-0.5 text-xs transition-colors",
+                          filterMinScore === score
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/50"
+                        )}
+                      >
+                        {score === 0 ? dict.common.all : `≥${score}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          </header>
 
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto">
@@ -381,8 +502,8 @@ function SearchResultsContent() {
                 <div className="flex flex-col items-center justify-center gap-4 py-20">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <div className="text-center">
-                    <p className="text-sm font-medium text-foreground">AI 正在搜索并分析...</p>
-                    <p className="mt-1 text-xs text-muted-foreground">解析意图 → 搜索 GitHub → 语义排序</p>
+                    <p className="text-sm font-medium text-foreground">{t.aiSearching}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t.aiSearchSteps}</p>
                   </div>
                 </div>
               )}
@@ -391,14 +512,14 @@ function SearchResultsContent() {
                 <div className="flex flex-col items-center justify-center gap-4 py-20">
                   <AlertCircle className="h-8 w-8 text-destructive" />
                   <div className="text-center">
-                    <p className="text-sm font-medium text-foreground">搜索失败</p>
+                    <p className="text-sm font-medium text-foreground">{t.searchFailed}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{error}</p>
                   </div>
                   <Button variant="outline" onClick={() => {
                     sessionStorage.removeItem(CACHE_KEY_PREFIX + query);
                     doSearch(query);
                   }}>
-                    重试
+                    {t.retryButton}
                   </Button>
                 </div>
               )}
@@ -416,25 +537,34 @@ function SearchResultsContent() {
                       }))}
                       summaryText={aiSummary}
                       insights={insights}
+                      suggestions={intentTags.length > 0 ? [
+                        t.suggestionAddTechStack.replace("{value}", intentTags.find(t => t.type === "特性")?.value || "GraphQL"),
+                        t.suggestionFilterLicense,
+                        t.suggestionAddActivity,
+                      ] : undefined}
+                      relatedSearches={relatedTopics.slice(0, 5).map((t) => t.name)}
+                      onRelatedSearchClick={(q) => {
+                        router.push(`/search/results?q=${encodeURIComponent(q)}`);
+                      }}
                     />
                   </div>
 
                   <div className="mb-6 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        找到 {results.length} 个相关项目
+                        {results.length} {t.foundProjects}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-3">
                       <Select value={sortBy} onValueChange={setSortBy}>
                         <SelectTrigger className="w-40 border-border bg-muted/50">
-                          <SelectValue placeholder="排序方式" />
+                          <SelectValue placeholder={dict.searchResults.advancedFilters} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="relevance">匹配度优先</SelectItem>
-                          <SelectItem value="stars">Stars 最多</SelectItem>
-                          <SelectItem value="trending">本周热门</SelectItem>
+                          <SelectItem value="relevance">{t.sortRelevanceFirst}</SelectItem>
+                          <SelectItem value="stars">{t.sortStarsMost}</SelectItem>
+                          <SelectItem value="trending">{t.sortTrendingThisWeek}</SelectItem>
                         </SelectContent>
                       </Select>
 
@@ -471,8 +601,8 @@ function SearchResultsContent() {
                 <div className="flex flex-col items-center justify-center gap-4 py-20">
                   <Search className="h-8 w-8 text-muted-foreground" />
                   <div className="text-center">
-                    <p className="text-sm font-medium text-foreground">未找到匹配的项目</p>
-                    <p className="mt-1 text-xs text-muted-foreground">请尝试调整搜索条件或使用不同的关键词</p>
+                    <p className="text-sm font-medium text-foreground">{t.noMatchingProjects}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t.tryAdjustSearch}</p>
                   </div>
                 </div>
               )}

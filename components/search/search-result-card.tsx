@@ -25,6 +25,7 @@ import {
   Target,
   Gauge,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 export interface SearchResultData {
   id: string;
@@ -72,6 +73,9 @@ export function SearchResultCard({
   onGenerateReport,
   rank,
 }: SearchResultCardProps) {
+  const { dict } = useApp();
+  const t = dict.searchCard;
+  const s = dict.search;
   const [isHovered, setIsHovered] = useState(false);
 
   const formatNumber = (num: number): string => {
@@ -125,11 +129,11 @@ export function SearchResultCard({
                 >
                   {result.matchScore}%
                 </span>
-                <span className="text-xs text-muted-foreground">语义匹配</span>
+                <span className="text-xs text-muted-foreground">{s.matchScore}</span>
               </div>
             </TooltipTrigger>
             <TooltipContent side="left" className="max-w-xs">
-              <p className="text-sm">基于您的搜索意图，AI 计算出该项目的匹配程度</p>
+              <p className="text-sm">{s.intentParsing}</p>
             </TooltipContent>
           </Tooltip>
         </div>
@@ -196,7 +200,7 @@ export function SearchResultCard({
         <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-primary">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>匹配理由</span>
+            <span>{s.intentParsing}</span>
           </div>
           <p className="text-sm leading-relaxed text-foreground/90">{result.matchReason}</p>
         </div>
@@ -221,7 +225,7 @@ export function SearchResultCard({
 
         {/* Trend Indicator */}
         <div className="mb-4 flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
-          <span className="text-xs text-muted-foreground">近7日趋势</span>
+          <span className="text-xs text-muted-foreground">{dict.dashboard.thisWeek}</span>
           <span
             className={cn(
               "flex items-center gap-1 text-xs font-medium",
@@ -327,7 +331,7 @@ export function SearchResultCard({
             onClick={() => onAddToCompare?.(result)}
           >
             <Plus className="h-3.5 w-3.5" />
-            加入对比
+            {t.addToCompare}
           </Button>
           <Button
             size="sm"
@@ -335,7 +339,7 @@ export function SearchResultCard({
             onClick={() => onGenerateReport?.(result)}
           >
             <FileText className="h-3.5 w-3.5" />
-            生成报告
+            {t.viewDetails}
           </Button>
         </div>
       </CardContent>

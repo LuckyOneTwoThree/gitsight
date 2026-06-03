@@ -20,7 +20,7 @@ export async function fetchGitHubTrending(
 
   const response = await fetch(url, {
     headers: {
-      "User-Agent": "RepoIntel-MVP/1.0 (GitHub Trending Fetcher)",
+      "User-Agent": "GitSight-MVP/1.0 (GitHub Trending Fetcher)",
       Accept: "text/html",
     },
     next: {

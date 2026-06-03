@@ -42,18 +42,60 @@ export interface GenerateJsonOptions {
 }
 
 const modelContextWindows: Record<string, number> = {
+  // OpenAI
   "gpt-4.1-mini": 128000,
   "gpt-4.1": 128000,
   "gpt-4.1-nano": 128000,
   "gpt-4o-mini": 128000,
   "gpt-4o": 128000,
+  // Anthropic
+  "claude-sonnet-4-20250514": 200000,
+  "claude-3-5-sonnet-20241022": 200000,
+  "claude-3-5-haiku-20241022": 200000,
+  // Google
+  "gemini-2.5-flash": 1048576,
+  "gemini-2.5-pro": 1048576,
+  "gemini-2.0-flash": 1048576,
+  // DeepSeek
   "deepseek-chat": 64000,
   "deepseek-reasoner": 64000,
+  // Qwen (通义千问)
+  "qwen-plus": 131072,
+  "qwen-turbo": 131072,
+  "qwen-max": 131072,
+  "qwen-long": 1000000,
+  // Zhipu (智谱)
+  "glm-4-flash": 128000,
+  "glm-4-plus": 128000,
+  "glm-4-long": 1000000,
+  // Kimi (月之暗面)
   "moonshot-v1-8k": 8192,
   "moonshot-v1-32k": 32768,
   "moonshot-v1-128k": 131072,
+  // Baichuan (百川)
+  "Baichuan4": 32768,
+  // Yi (零一万物)
+  "yi-lightning": 16384,
+  "yi-large": 32768,
+  // StepFun (阶跃星辰)
+  "step-2-16k": 16384,
+  "step-2-256k": 262144,
+  // MiniMax
+  "MiniMax-Text-01": 1000000,
+  // MiMo (小米)
   "mimo-v2.5-pro": 131072,
-  "xiaomi/mimo-v2.5-pro": 131072,
+  "mimo-v2.5-flash": 131072,
+  // Volcengine (火山引擎/豆包)
+  "doubao-1.5-pro-32k": 32768,
+  "doubao-1.5-pro-128k": 131072,
+  "doubao-1.5-lite-32k": 32768,
+  // SiliconFlow (硅基流动)
+  "Qwen/Qwen3-8B": 32768,
+  "Qwen/Qwen3-32B": 32768,
+  "deepseek-ai/DeepSeek-V3": 65536,
+  // OpenRouter (pass-through)
+  "google/gemini-2.5-flash-preview": 1048576,
+  "deepseek/deepseek-chat-v3-0324": 64000,
 }
 
 const DEFAULT_CONTEXT_WINDOW = 128000
@@ -133,7 +175,7 @@ export async function generateJsonWithLlm(options: GenerateJsonOptions) {
         ...(config.provider === "openrouter"
           ? {
               "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://repointel.local",
-              "X-Title": "RepoIntel",
+              "X-Title": "GitSight",
             }
           : {}),
       },

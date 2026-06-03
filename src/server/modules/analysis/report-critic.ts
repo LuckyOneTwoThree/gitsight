@@ -28,7 +28,7 @@ export async function critiqueReport(
 function buildCriticSystemPrompt(lang: ReportLanguage) {
   if (lang === "en") {
     return [
-      "You are RepoIntel's commercial report quality reviewer.",
+      "You are GitSight's commercial report quality reviewer.",
       "Your task is to critique the report, not rewrite it.",
       "Check for hallucinations, invalid evidence references, unsupported conclusions, vague content, missing risks, and weak commercial judgment.",
       "A report can be structurally complete and still fail if it does not help a paying user make a concrete product, technical, investment, or adoption decision.",
@@ -38,7 +38,7 @@ function buildCriticSystemPrompt(lang: ReportLanguage) {
   }
 
   return [
-    "你是 RepoIntel 的商业化报告质检专家。",
+    "你是 GitSight 的商业化报告质检专家。",
     "你的任务是审稿，不是重写报告。",
     "请检查报告是否存在幻觉、证据引用错误、把推断写成事实、内容空泛、关键风险缺失、商业判断不够可执行等问题。",
     "即使字段完整，只要报告不能帮助付费用户做出具体的产品、技术、投资或采用决策，也应判为不通过。",

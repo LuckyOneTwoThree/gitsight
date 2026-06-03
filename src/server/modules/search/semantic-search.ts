@@ -86,7 +86,7 @@ interface ParsedIntent {
   coreConcepts: string[]
 }
 
-async function parseSearchIntent(query: string): Promise<ParsedIntent> {
+export async function parseSearchIntent(query: string): Promise<ParsedIntent> {
   const t0 = Date.now()
   const result = await generateJsonWithLlm({
     system: `You are a search intent parser for a GitHub repository search engine.

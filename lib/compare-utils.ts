@@ -1,4 +1,4 @@
-import type { ComparisonProject } from "@/lib/mock-compare-data"
+import type { ComparisonProject } from "@/lib/analysis-sections"
 import type { ApiRepo } from "@/lib/repo-api"
 
 const languageColors: Record<string, string> = {

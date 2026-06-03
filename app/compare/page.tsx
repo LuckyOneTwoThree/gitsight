@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buildComparisonCsv, repoToComparisonProject } from "@/lib/compare-utils";
-import type { ComparisonProject } from "@/lib/mock-compare-data";
+import type { ComparisonProject } from "@/lib/analysis-sections";
 import type { ApiRepo } from "@/lib/repo-api";
+import type { Dictionary } from "@/lib/i18n";
+import { useApp } from "@/components/app-provider";
 
 const compareTaskStorageKey = "repo-intel:compare-analysis-task";
 
@@ -32,6 +34,8 @@ interface CompareAnalysisJob {
 }
 
 export default function ComparePage() {
+  const { dict } = useApp();
+  const t = dict.compare;
   const [availableProjects, setAvailableProjects] = useState<ComparisonProject[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<ComparisonProject[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -54,7 +58,7 @@ export default function ComparePage() {
       try {
         const response = await fetch("/api/projects?limit=50");
         if (!response.ok) {
-          throw new Error("无法加载已同步仓库");
+          throw new Error(t.cannotLoadSyncedRepos);
         }
 
         const payload = (await response.json()) as ProjectsResponse;
@@ -106,7 +110,7 @@ export default function ComparePage() {
         }
       } catch (error) {
         if (!cancelled) {
-          setProjectError(error instanceof Error ? error.message : "加载失败");
+          setProjectError(error instanceof Error ? error.message : dict.common.loadingFailed);
         }
       } finally {
         if (!cancelled) {
@@ -145,7 +149,7 @@ export default function ComparePage() {
         const payload = (await response.json().catch(() => null)) as CompareAnalysisJob | null;
 
         if (!response.ok || !payload) {
-          throw new Error("无法同步对比分析任务状态");
+          throw new Error(t.syncCompareTaskFailed);
         }
 
         if (cancelled) return;
@@ -160,7 +164,7 @@ export default function ComparePage() {
         }
 
         if (payload.status === "failed") {
-          setAnalysisError(payload.error || "生成失败");
+          setAnalysisError(payload.error || t.generationFailed);
           window.sessionStorage.removeItem(compareTaskStorageKey);
           return;
         }
@@ -169,7 +173,7 @@ export default function ComparePage() {
           timer = window.setTimeout(pollTask, 1800);
         } else {
           setAnalysisStatus("failed");
-          setAnalysisError("同步超时，请刷新页面重试。");
+          setAnalysisError(t.syncTimeout);
           window.sessionStorage.removeItem(compareTaskStorageKey);
         }
       } catch (error) {
@@ -178,7 +182,7 @@ export default function ComparePage() {
           timer = window.setTimeout(pollTask, 3000);
         } else {
           setAnalysisStatus("failed");
-          setAnalysisError(error instanceof Error ? error.message : "同步失败，请刷新页面重试。");
+          setAnalysisError(error instanceof Error ? error.message : t.syncFailed);
           window.sessionStorage.removeItem(compareTaskStorageKey);
         }
       }
@@ -245,19 +249,19 @@ export default function ComparePage() {
       });
 
       if (response.status === 401) {
-        toast.error("请求失败，请检查配置后重试。");
+        toast.error(t.requestFailedCheckConfig);
         return;
       }
 
       if (response.status === 403) {
-        toast.error("请求被拒绝，请检查配置后重试。");
+        toast.error(t.requestDeniedCheckConfig);
         setAnalysisStatus(null);
         return;
       }
 
       const payload = (await response.json().catch(() => null)) as CompareAnalysisJob | null;
       if (!response.ok || !payload) {
-        throw new Error((payload as { error?: { message?: string } } | null)?.error?.message || "生成对比报告失败");
+        throw new Error((payload as { error?: { message?: string } } | null)?.error?.message || t.generateCompareReportFailed);
       }
 
       setAnalysisTaskId(payload.id);
@@ -265,7 +269,7 @@ export default function ComparePage() {
       window.sessionStorage.setItem(compareTaskStorageKey, payload.id);
     } catch (error) {
       setAnalysisStatus("failed");
-      setAnalysisError(error instanceof Error ? error.message : "生成失败");
+      setAnalysisError(error instanceof Error ? error.message : t.generationFailed);
       window.sessionStorage.removeItem(compareTaskStorageKey);
     }
   };
@@ -278,13 +282,25 @@ export default function ComparePage() {
       return;
     }
 
-    const markdown = markdownReport || buildBasicMarkdown(selectedProjects);
+    const markdown = markdownReport || buildBasicMarkdown(selectedProjects, t);
     downloadTextFile("repo-comparison.md", markdown, "text/markdown");
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (isGeneratingMarkdown) return;
-    toast.info("分享链接后续接入，当前可先导出 Markdown。");
+    const markdown = markdownReport || buildBasicMarkdown(selectedProjects, t);
+    if (!markdown) {
+      toast.info(t.noReportToShare);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(markdown);
+      toast.success(t.reportCopiedToClipboard);
+    } catch {
+      // Fallback: download as file
+      downloadTextFile("repo-comparison.md", markdown, "text/markdown");
+      toast.info(t.markdownExported);
+    }
   };
 
   const handleRefresh = () => {
@@ -321,7 +337,7 @@ export default function ComparePage() {
 
         {isGeneratingMarkdown && (
           <div className="shrink-0 border-b border-border bg-primary/10 px-4 md:px-6 py-2 text-xs text-primary">
-            深度对比分析正在后台生成。可以切换到其他页面，回到对比工作台后会继续同步结果。
+            {t.generatingBanner}
           </div>
         )}
 
@@ -358,10 +374,10 @@ export default function ComparePage() {
                   <div>
                     <CardTitle className="flex items-center gap-2 text-base">
                       <FileText className="h-4 w-4 text-primary" />
-                      深度对比分析
+                      {t.deepAnalysis}
                     </CardTitle>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      当前先生成 Markdown，后续再打磨 prompt 和 PDF 版式。
+                      {t.currentMarkdownNote}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -373,7 +389,7 @@ export default function ComparePage() {
                     {analysisStatus === "cached" && (
                       <Badge variant="secondary" className="gap-1 text-xs text-primary">
                         <CheckCircle2 className="h-3 w-3" />
-                        已生成
+                        {t.generated}
                       </Badge>
                     )}
                     {markdownReport && (
@@ -385,7 +401,7 @@ export default function ComparePage() {
                         onClick={() => downloadTextFile("repo-comparison.md", markdownReport, "text/markdown")}
                       >
                         <Download className="h-4 w-4" />
-                        下载 MD
+                        {t.downloadMd}
                       </Button>
                     )}
                     <Button
@@ -399,7 +415,7 @@ export default function ComparePage() {
                       ) : (
                         <FileText className="h-4 w-4" />
                       )}
-                      {markdownReport ? "重新生成" : "生成 Markdown"}
+                      {markdownReport ? t.regenerate : t.generateMarkdown}
                     </Button>
                   </div>
                 </CardHeader>
@@ -412,14 +428,14 @@ export default function ComparePage() {
                   {isGeneratingMarkdown && (
                     <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      正在生成 Markdown 报告，完成后会自动刷新预览。
+                      {t.generating}
                     </div>
                   )}
                   {markdownReport ? (
                     <MarkdownPreview markdown={markdownReport} />
                   ) : (
                     <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-                      选择项目后点击生成，系统会产出一份 Markdown 对比报告。
+                      {t.deepAnalysisHint}
                     </div>
                   )}
                 </CardContent>
@@ -431,10 +447,10 @@ export default function ComparePage() {
                 <FileText className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="mt-4 text-lg font-semibold text-foreground">
-                请选择至少 2 个项目
+                {t.selectAtLeast2}
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                可以从已同步仓库中选择，也可以直接粘贴 GitHub 地址解析加入。
+                {t.selectHint}
               </p>
             </div>
           )}
@@ -559,20 +575,20 @@ function parseTableRow(line: string) {
     .filter((cell) => !/^:?-{3,}:?$/.test(cell));
 }
 
-function buildBasicMarkdown(projects: ComparisonProject[]) {
+function buildBasicMarkdown(projects: ComparisonProject[], t: Dictionary["compare"]) {
   const rows = projects.map((project) => {
     return `| ${project.owner}/${project.name} | ${project.language} | ${project.stars} | ${project.forks} | ${project.openIssues} | ${project.license} |`;
   });
 
   return [
-    "# 项目对比报告",
+    t.mdCompareReport,
     "",
-    "| 仓库 | 语言 | Stars | Forks | Open Issues | License |",
+    t.mdTableHeader,
     "| --- | --- | ---: | ---: | ---: | --- |",
     ...rows,
     "",
-    "## 备注",
-    "当前为基础对比导出，点击“生成 Markdown”可生成更完整的对比分析。",
+    t.mdNote,
+    t.mdBasicExportNote,
   ].join("\n");
 }
 

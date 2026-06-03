@@ -2,7 +2,7 @@
   "name": "repointel",
   "version": "1.0.0",
   "private": true,
-  "description": "RepoIntel - 开源项目情报与分析工具",
+  "description": "GitSight - 开源项目情报与分析工具",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "next dev",
@@ -86,8 +86,8 @@
   },
   "build": {
     "appId": "com.repointel.desktop",
-    "productName": "RepoIntel",
-    "copyright": "Copyright © 2025 RepoIntel",
+    "productName": "GitSight",
+    "copyright": "Copyright © 2025 GitSight",
     "directories": {
       "output": "dist-electron-output",
       "buildResources": "electron/resources"
@@ -145,7 +145,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "RepoIntel"
+      "shortcutName": "GitSight"
     },
     "asar": true,
     "npmRebuild": true

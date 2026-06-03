@@ -41,7 +41,7 @@ export async function searchGitHubRepos(
 ): Promise<GitHubSearchResult[]> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
-    "User-Agent": "RepoIntel-MVP",
+    "User-Agent": "GitSight-MVP",
   }
 
   if (getServerEnv().githubToken) {

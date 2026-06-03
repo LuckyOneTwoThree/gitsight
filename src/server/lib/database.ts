@@ -1,5 +1,5 @@
 import Database from "better-sqlite3"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "fs"
 import { readdirSync } from "fs"
 import path from "path"
 import { getConfigDirPath } from "./desktop-config"
@@ -243,4 +243,12 @@ export function getBackupFilepath(filename: string): string | null {
   if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) return null
 
   return backupPath
+}
+
+export function deleteBackup(filename: string): boolean {
+  const backupPath = getBackupFilepath(filename)
+  if (!backupPath) return false
+
+  unlinkSync(backupPath)
+  return true
 }

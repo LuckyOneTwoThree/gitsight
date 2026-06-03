@@ -11,6 +11,7 @@ import {
   ArrowUpRight,
   Minus,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 interface StatCard {
   label: string;
@@ -28,6 +29,9 @@ function formatNumber(num: number): string {
 }
 
 export function StatsCards() {
+  const { dict } = useApp();
+  const d = dict.dashboard;
+  const c = dict.common;
   const [stats, setStats] = useState<StatCard[]>([]);
 
   useEffect(() => {
@@ -49,33 +53,33 @@ export function StatsCards() {
 
         setStats([
           {
-            label: "今日新增 Star",
+            label: d.todayPlus.trim(),
             value: formatNumber(starsToday),
-            change: starsToday > 0 ? `+${formatNumber(starsToday)}` : "暂无数据",
+            change: starsToday > 0 ? `+${formatNumber(starsToday)}` : c.noData,
             changeType: starsToday > 0 ? "positive" : "neutral",
             icon: TrendingUp,
             sparklineData: starsSparkline.length > 1 ? starsSparkline : (starsToday > 0 ? [0, starsToday * 0.3, starsToday * 0.5, starsToday * 0.7, starsToday * 0.85, starsToday] : [0, 0, 0, 0, 0, 0]),
           },
           {
-            label: "追踪项目数",
+            label: d.totalProjects,
             value: formatNumber(totalProjects),
-            change: totalProjects > 0 ? `${totalProjects} 个项目` : "暂无数据",
+            change: totalProjects > 0 ? `${totalProjects} ${d.syncedRepos}` : c.noData,
             changeType: totalProjects > 0 ? "positive" : "neutral",
             icon: Zap,
             sparklineData: totalProjects > 0 ? [1, Math.ceil(totalProjects * 0.2), Math.ceil(totalProjects * 0.4), Math.ceil(totalProjects * 0.6), Math.ceil(totalProjects * 0.8), totalProjects] : [0, 0, 0, 0, 0, 0],
           },
           {
-            label: "总 Star 数",
+            label: d.totalStars,
             value: formatNumber(totalStars),
-            change: totalStars > 0 ? `${formatNumber(totalStars)} stars` : "暂无数据",
+            change: totalStars > 0 ? `${formatNumber(totalStars)} stars` : c.noData,
             changeType: totalStars > 0 ? "positive" : "neutral",
             icon: Star,
             sparklineData: starsSparkline.length > 1 ? starsSparkline : (totalStars > 0 ? [0, totalStars * 0.3, totalStars * 0.5, totalStars * 0.7, totalStars * 0.85, totalStars] : [0, 0, 0, 0, 0, 0]),
           },
           {
-            label: "总 Fork 数",
+            label: d.totalForks,
             value: formatNumber(totalForks),
-            change: totalForks > 0 ? `${formatNumber(totalForks)} forks` : "暂无数据",
+            change: totalForks > 0 ? `${formatNumber(totalForks)} forks` : c.noData,
             changeType: totalForks > 0 ? "positive" : "neutral",
             icon: GitFork,
             sparklineData: forksSparkline.length > 1 ? forksSparkline : (totalForks > 0 ? [0, totalForks * 0.3, totalForks * 0.5, totalForks * 0.7, totalForks * 0.85, totalForks] : [0, 0, 0, 0, 0, 0]),
@@ -111,7 +115,7 @@ export function StatsCards() {
               </div>
             </div>
 
-            <div className="mt-2 sm:mt-3 hidden sm:block">
+            <div className="mt-2 sm:mt-3">
               <Sparkline
                 data={stat.sparklineData}
                 color={

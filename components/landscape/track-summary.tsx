@@ -14,6 +14,7 @@ import {
   Zap,
   Rocket,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 interface TrackSummary {
   name: string;
@@ -38,6 +39,8 @@ interface TrackSummaryProps {
 }
 
 export function TrackSummaryCard({ summary }: TrackSummaryProps) {
+  const { dict } = useApp();
+  const t = dict.landscape;
   return (
     <Card className="border-border bg-card">
       <CardContent className="p-0">
@@ -52,11 +55,11 @@ export function TrackSummaryCard({ summary }: TrackSummaryProps) {
                 <h2 className="text-base font-semibold text-foreground truncate">
                   {summary.name}
                 </h2>
-                <p className="text-xs text-muted-foreground">AI 赛道综述</p>
+                <p className="text-xs text-muted-foreground">{t.trackSummary}</p>
               </div>
               <Badge variant="secondary" className="ml-auto text-[10px] shrink-0">
                 <Zap className="h-3 w-3 mr-1" />
-                实时更新
+                {t.liveData}
               </Badge>
             </div>
 
@@ -67,7 +70,7 @@ export function TrackSummaryCard({ summary }: TrackSummaryProps) {
             {/* Tech Routes */}
             <div className="space-y-3">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                主流技术路线
+                {t.techRoutes}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 min-w-0">
                 {summary.techRoutes.map((route) => (
@@ -89,7 +92,7 @@ export function TrackSummaryCard({ summary }: TrackSummaryProps) {
                     </p>
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                       <GitBranch className="h-3 w-3 shrink-0" />
-                      <span className="truncate">代表: {route.representative}</span>
+                      <span className="truncate">{t.representative}: {route.representative}</span>
                     </div>
                   </div>
                 ))}
@@ -104,7 +107,7 @@ export function TrackSummaryCard({ summary }: TrackSummaryProps) {
               <div className="rounded-lg bg-background/60 p-3">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                   <Star className="h-3 w-3 shrink-0" />
-                  <span className="text-[10px]">项目总数</span>
+                  <span className="text-[10px]">{t.totalProjects}</span>
                 </div>
                 <p className="text-lg font-bold text-foreground">
                   {summary.stats.totalProjects}
@@ -113,7 +116,7 @@ export function TrackSummaryCard({ summary }: TrackSummaryProps) {
               <div className="rounded-lg bg-background/60 p-3">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                   <Users className="h-3 w-3 shrink-0" />
-                  <span className="text-[10px]">贡献者</span>
+                  <span className="text-[10px]">{t.contributors}</span>
                 </div>
                 <p className="text-lg font-bold text-foreground">
                   {(summary.stats.totalContributors / 1000).toFixed(1)}k
@@ -122,7 +125,7 @@ export function TrackSummaryCard({ summary }: TrackSummaryProps) {
               <div className="rounded-lg bg-background/60 p-3">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                   <TrendingUp className="h-3 w-3 shrink-0" />
-                  <span className="text-[10px]">周增长率</span>
+                  <span className="text-[10px]">{t.weekGrowth}</span>
                 </div>
                 <p className="text-lg font-bold text-primary">
                   {summary.stats.weekGrowth}
@@ -131,7 +134,7 @@ export function TrackSummaryCard({ summary }: TrackSummaryProps) {
               <div className="rounded-lg bg-background/60 p-3">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                   <Star className="h-3 w-3 shrink-0" />
-                  <span className="text-[10px]">平均 Star</span>
+                  <span className="text-[10px]">{t.avgStars}</span>
                 </div>
                 <p className="text-lg font-bold text-foreground">
                   {(summary.stats.avgStars / 1000).toFixed(1)}k
@@ -143,7 +146,7 @@ export function TrackSummaryCard({ summary }: TrackSummaryProps) {
             <div className="space-y-3">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                 <Rocket className="h-3 w-3 shrink-0" />
-                本周飙升黑马
+                {t.risingStars}
               </h3>
               <div className="space-y-2">
                 {summary.risingStars.map((star) => (

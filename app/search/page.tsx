@@ -93,15 +93,15 @@ function saveSaved(entries: SavedSearchEntry[]) {
   localStorage.setItem(SAVED_KEY, JSON.stringify(entries))
 }
 
-function formatTimeAgo(ts: number): string {
+function formatTimeAgo(ts: number, t: ReturnType<typeof useApp>["dict"]["search"]): string {
   const diff = Date.now() - ts
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return "刚刚"
-  if (mins < 60) return `${mins} 分钟前`
+  if (mins < 1) return t.justNow
+  if (mins < 60) return `${mins} ${t.minutesAgo}`
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} 小时前`
+  if (hours < 24) return `${hours} ${t.hoursAgo}`
   const days = Math.floor(hours / 24)
-  if (days < 7) return `${days} 天前`
+  if (days < 7) return `${days} ${t.daysAgo}`
   return new Date(ts).toLocaleDateString("zh-CN")
 }
 
@@ -244,11 +244,10 @@ export default function SearchPage() {
               <Sparkles className="h-7 w-7 text-primary" />
             </div>
             <h2 className="mb-2 text-2xl font-semibold text-foreground">
-              用自然语言发现开源项目
+              {t.discoverWithNaturalLanguage}
             </h2>
             <p className="mb-6 max-w-xl text-muted-foreground">
-              描述您的需求，AI
-              将理解您的意图并智能匹配最相关的开源项目。支持多维度语义搜索和意图解析。
+              {t.discoverDesc}
             </p>
             <Button
               size="lg"
@@ -256,7 +255,7 @@ export default function SearchPage() {
               onClick={() => setSearchOpen(true)}
             >
               <Search className="h-4 w-4" />
-              开始搜索
+              {t.startSearch}
               <div className="ml-2 flex items-center gap-1">
                 <Kbd className="h-5 bg-primary-foreground/20">
                   <span className="text-[10px]">⌘</span>
@@ -272,18 +271,18 @@ export default function SearchPage() {
                 <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <History className="h-4 w-4 text-muted-foreground" />
-                    搜索历史
+                    {t.searchHistory}
                   </CardTitle>
                   {searchHistory.length > 0 && (
                     <Button variant="ghost" size="sm" className="text-xs" onClick={handleClearHistory}>
-                      清除全部
+                      {t.clearAll}
                     </Button>
                   )}
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {searchHistory.length === 0 && (
                     <p className="py-6 text-center text-sm text-muted-foreground">
-                      暂无搜索历史，开始搜索吧
+                      {t.noSearchHistory}
                     </p>
                   )}
                   {searchHistory.slice(0, 5).map((item) => (
@@ -301,7 +300,7 @@ export default function SearchPage() {
                             {item.query}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {formatTimeAgo(item.timestamp)}
+                            {formatTimeAgo(item.timestamp, t)}
                           </span>
                         </div>
                         {item.tags.length > 0 && (
@@ -318,7 +317,7 @@ export default function SearchPage() {
                           </div>
                         )}
                         <div className="text-xs text-muted-foreground">
-                          找到 {item.resultCount} 个相关项目
+                          {t.foundCount.replace("{count}", String(item.resultCount))} {t.foundRelatedProjects}
                         </div>
                       </div>
                       <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
@@ -331,13 +330,13 @@ export default function SearchPage() {
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    推荐探索方向
+                    {t.exploreSuggestions}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {exploreData.length === 0 ? (
                     <p className="py-6 text-center text-sm text-muted-foreground">
-                      加载中...
+                      {dict.common.loading}
                     </p>
                   ) : (
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -360,7 +359,7 @@ export default function SearchPage() {
                                 variant="secondary"
                                 className="bg-background/50 text-[10px]"
                               >
-                                {suggestion.projects} 项目
+                                {suggestion.projects} {t.projectsUnit}
                               </Badge>
                             </div>
                             <div>
@@ -372,7 +371,7 @@ export default function SearchPage() {
                               </p>
                               {suggestion.topRepos.length > 0 && (
                                 <p className="mt-2 text-[10px] text-muted-foreground/70">
-                                  热门: {suggestion.topRepos.join(" · ")}
+                                  {t.hotLabel} {suggestion.topRepos.join(" · ")}
                                 </p>
                               )}
                             </div>
@@ -390,13 +389,13 @@ export default function SearchPage() {
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <TrendingUp className="h-4 w-4 text-emerald-400" />
-                    热门搜索趋势
+                    {t.trendingSearches}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {trendingData.length === 0 && (
                     <p className="py-4 text-center text-sm text-muted-foreground">
-                      加载中...
+                      {dict.common.loading}
                     </p>
                   )}
                   {trendingData.map((item) => (
@@ -437,13 +436,13 @@ export default function SearchPage() {
                 <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <Bookmark className="h-4 w-4 text-muted-foreground" />
-                    收藏的搜索
+                    {t.savedSearches}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {savedSearches.length === 0 && (
                     <p className="py-4 text-center text-sm text-muted-foreground">
-                      暂无收藏，搜索后可收藏常用查询
+                      {t.noSavedSearches}
                     </p>
                   )}
                   {savedSearches.map((item) => (
@@ -473,31 +472,31 @@ export default function SearchPage() {
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-base font-semibold">
                     <Zap className="h-4 w-4 text-yellow-400" />
-                    搜索技巧
+                    {t.searchTips}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-xs text-muted-foreground">
                   <div className="flex items-start gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                    <span>使用自然语言描述需求，如"医疗领域的轻量级数据库"</span>
+                    <span>{t.tip1}</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                    <span>组合多个特性，如"Rust 编写的高性能 Web 框架"</span>
+                    <span>{t.tip2}</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                    <span>描述使用场景，如"适合初创团队的低代码平台"</span>
+                    <span>{t.tip3}</span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                     <span>
-                      按
+                      {t.tip4}
                       <Kbd className="mx-1 inline-flex">
                         <span className="text-[10px]">⌘</span>
                       </Kbd>
                       <Kbd className="inline-flex">K</Kbd>
-                      随时唤起搜索
+                      {t.tip4End}
                     </span>
                   </div>
                 </CardContent>

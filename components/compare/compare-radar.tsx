@@ -10,7 +10,8 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
-import type { ComparisonProject } from "@/lib/mock-compare-data";
+import type { ComparisonProject } from "@/lib/analysis-sections";
+import { useApp } from "@/components/app-provider";
 
 const COLORS = [
   "hsl(var(--primary))",
@@ -33,6 +34,9 @@ function normalize(value: number, max: number): number {
 export function CompareRadarChart({ projects }: CompareRadarProps) {
   if (projects.length < 2) return null;
 
+  const { dict } = useApp();
+  const t = dict.compare;
+
   const maxStars = Math.max(...projects.map((p) => p.stars), 1);
   const maxForks = Math.max(...projects.map((p) => p.forks), 1);
   const maxContributors = Math.max(...projects.map((p) => p.contributors), 1);
@@ -41,16 +45,17 @@ export function CompareRadarChart({ projects }: CompareRadarProps) {
   const data = [
     { dimension: "Star", ...Object.fromEntries(projects.map((p, i) => [`p${i}`, normalize(p.stars, maxStars)])) },
     { dimension: "Fork", ...Object.fromEntries(projects.map((p, i) => [`p${i}`, normalize(p.forks, maxForks)])) },
-    { dimension: "贡献者", ...Object.fromEntries(projects.map((p, i) => [`p${i}`, normalize(p.contributors, maxContributors)])) },
-    { dimension: "PR合并率", ...Object.fromEntries(projects.map((p, i) => [`p${i}`, normalize(p.prMergeRate, maxPrMerge)])) },
-    { dimension: "活跃度", ...Object.fromEntries(projects.map((p, i) => [`p${i}`, p.starsWeek > 0 ? Math.min(Math.round((p.starsWeek / maxStars) * 500), 100) : 10])) },
+    { dimension: t.radarContributors, ...Object.fromEntries(projects.map((p, i) => [`p${i}`, normalize(p.contributors, maxContributors)])) },
+    { dimension: t.radarPrMergeRate, ...Object.fromEntries(projects.map((p, i) => [`p${i}`, normalize(p.prMergeRate, maxPrMerge)])) },
+    { dimension: t.radarActivity, ...Object.fromEntries(projects.map((p, i) => [`p${i}`, p.starsWeek > 0 ? Math.min(Math.round((p.starsWeek / maxStars) * 500), 100) : 10])) },
   ];
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      <h3 className="mb-4 text-sm font-semibold text-foreground">维度雷达图</h3>
-      <ResponsiveContainer width="100%" height={320}>
-        <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
+      <h3 className="mb-4 text-sm font-semibold text-foreground">{t.radarTitle}</h3>
+      <div style={{ width: "100%", height: 320, minWidth: 200 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
           <PolarGrid stroke="hsl(var(--border))" />
           <PolarAngleAxis
             dataKey="dimension"
@@ -85,6 +90,7 @@ export function CompareRadarChart({ projects }: CompareRadarProps) {
           />
         </RadarChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

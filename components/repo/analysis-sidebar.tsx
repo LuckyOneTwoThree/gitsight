@@ -18,15 +18,18 @@ import {
   Zap,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { AnalysisSection } from "@/lib/mock-repo-data"
+import type { AnalysisSection } from "@/lib/analysis-sections"
+import { useApp } from "@/components/app-provider"
 
 interface AnalysisSidebarProps {
   sections: AnalysisSection[]
   activeSection: string
   generatingSectionIds?: Set<string>
   onSectionChange: (id: string) => void
+  onGenerateAll?: () => void
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -57,12 +60,12 @@ function getStatusIcon(status: AnalysisSection["status"]) {
   }
 }
 
-function getStatusLabel(section: AnalysisSection) {
+function getStatusLabel(section: AnalysisSection, t: ReturnType<typeof useApp>["dict"]["analysisSidebar"]) {
   switch (section.status) {
     case "cached":
-      return <span className="text-[10px] text-muted-foreground">已缓存</span>
+      return <span className="text-[10px] text-muted-foreground">{t.cached}</span>
     case "generating":
-      return <span className="text-[10px] text-info">生成中</span>
+      return <span className="text-[10px] text-info">{t.generating}</span>
     case "not_generated":
       return <span className="text-[10px] text-primary">{section.estimatedTime}</span>
     default:
@@ -83,6 +86,8 @@ function AnalysisButton({
 }) {
   const IconComponent = iconMap[section.icon] || Sparkles
   const effectiveStatus = isGenerating ? "generating" : section.status
+  const { dict } = useApp()
+  const t = dict.analysisSidebar
 
   return (
     <button
@@ -104,7 +109,7 @@ function AnalysisButton({
         </div>
         <p className="line-clamp-1 text-[10px] text-muted-foreground">{section.description}</p>
         <div className="mt-0.5 flex items-center gap-2 leading-none">
-          {getStatusLabel({ ...section, status: effectiveStatus })}
+          {getStatusLabel({ ...section, status: effectiveStatus }, t)}
           {effectiveStatus === "generating" && <Progress value={section.progress || 35} className="h-1 flex-1" />}
         </div>
       </div>
@@ -117,12 +122,34 @@ export function AnalysisSidebar({
   activeSection,
   generatingSectionIds,
   onSectionChange,
+  onGenerateAll,
 }: AnalysisSidebarProps) {
+  const { dict } = useApp();
+  const t = dict.analysisSidebar;
+  const notGeneratedCount = sections.filter((s) => s.status === "not_generated").length
+
   return (
     <div className="flex w-72 shrink-0 flex-col overflow-hidden border-r border-border bg-card/30">
-      <div className="shrink-0 border-b border-border px-3 py-2.5">
-        <h2 className="text-sm font-medium text-foreground">AI 分析视角</h2>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">选择不同视角深度解析项目</p>
+      <div className="shrink-0 border-b border-border px-3 py-2.5 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-medium text-foreground">{t.sections}</h2>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {notGeneratedCount > 0
+              ? t.notGeneratedCount.replace("{count}", String(notGeneratedCount))
+              : t.allGenerated}
+          </p>
+        </div>
+        {notGeneratedCount > 0 && onGenerateAll && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs text-primary"
+            onClick={onGenerateAll}
+          >
+            <Sparkles className="h-3 w-3" />
+            {t.generateAll}
+          </Button>
+        )}
       </div>
 
       <ScrollArea className="min-h-0 flex-1">

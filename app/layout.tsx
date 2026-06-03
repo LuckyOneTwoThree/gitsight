@@ -12,25 +12,12 @@ const geistSans = Geist({
 })
 
 export const metadata: Metadata = {
-  title: '开源情报与智能分析中台 | GitHub Intelligence Hub',
-  description: 'AI驱动的开源项目情报中台，发现热门项目、深度解析技术架构、洞察行业赛道',
-  generator: 'v0.app',
+  title: 'GitSight - 开源 GitHub 项目智能分析工具',
+  description: 'AI 驱动的 GitHub 开源项目深度分析桌面工具 — 发现热门项目、解析技术架构、洞察行业赛道',
   icons: {
     icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
+      { url: '/icon.svg', type: 'image/svg+xml' },
     ],
-    apple: '/apple-icon.png',
   },
 }
 

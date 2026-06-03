@@ -18,6 +18,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { useApp } from "@/components/app-provider";
 
 interface Integration {
   id: string;
@@ -37,6 +38,9 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export function Integrations() {
+  const { dict } = useApp();
+  const t = dict.integrations;
+  const c = dict.common;
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState<string | null>(null);
@@ -51,13 +55,13 @@ export function Integrations() {
       setError(null);
       try {
         const response = await fetch("/api/auth/integrations");
-        if (!response.ok) throw new Error("无法加载推送渠道");
+        if (!response.ok) throw new Error(t.saveFailed);
         const payload = (await response.json()) as { integrations: Integration[] };
         if (cancelled) return;
         setIntegrations(payload.integrations);
       } catch (err) {
-        if (cancelled) {
-          setError(err instanceof Error ? err.message : "加载失败");
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : c.error);
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -85,7 +89,7 @@ export function Integrations() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(payload?.error?.message || "更新失败");
+        throw new Error(payload?.error?.message || t.saveFailed);
       }
 
       setIntegrations((prev) =>
@@ -96,7 +100,7 @@ export function Integrations() {
         )
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "更新失败");
+      setError(err instanceof Error ? err.message : t.saveFailed);
     } finally {
       setIsSaving(null);
     }
@@ -125,7 +129,7 @@ export function Integrations() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(payload?.error?.message || "保存失败");
+        throw new Error(payload?.error?.message || t.saveFailed);
       }
 
       setIntegrations((prev) =>
@@ -137,7 +141,7 @@ export function Integrations() {
       );
       setEditingId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存失败");
+      setError(err instanceof Error ? err.message : t.saveFailed);
     } finally {
       setIsSaving(null);
     }
@@ -149,15 +153,15 @@ export function Integrations() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base font-semibold">
-              推送渠道集成
+              {t.title}
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              配置你的情报推送渠道，支持邮件、Webhook、飞书、微信
+              {t.webhookDesc}
             </p>
           </div>
           <Badge variant="secondary" className="text-xs">
             {integrations.filter((i) => i.enabled).length} /{" "}
-            {integrations.length || 4} 已连接
+            {integrations.length || 4} {t.enabled}
           </Badge>
         </div>
       </CardHeader>
@@ -224,7 +228,7 @@ export function Integrations() {
                               ) : (
                                 <X className="h-3 w-3" />
                               )}
-                              {integration.enabled ? "已连接" : "未连接"}
+                              {integration.enabled ? t.enabled : t.disabled}
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground">
@@ -232,7 +236,7 @@ export function Integrations() {
                           </p>
                           {integration.enabled && integration.updated_at && (
                             <p className="text-[10px] text-muted-foreground mt-1">
-                              更新于 {new Date(integration.updated_at).toLocaleDateString()}
+                              {t.updatedAt} {new Date(integration.updated_at).toLocaleDateString()}
                             </p>
                           )}
 
@@ -250,7 +254,7 @@ export function Integrations() {
                                 onClick={() => void saveWebhookConfig()}
                                 disabled={isSavingThis}
                               >
-                                {isSavingThis ? <Loader2 className="h-3 w-3 animate-spin" /> : "保存"}
+                                {isSavingThis ? <Loader2 className="h-3 w-3 animate-spin" /> : c.save}
                               </Button>
                               <Button
                                 variant="ghost"
@@ -258,7 +262,7 @@ export function Integrations() {
                                 className="h-8 text-xs"
                                 onClick={() => setEditingId(null)}
                               >
-                                取消
+                                {c.cancel}
                               </Button>
                             </div>
                           )}

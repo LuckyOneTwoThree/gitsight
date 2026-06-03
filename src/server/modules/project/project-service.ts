@@ -87,15 +87,20 @@ export async function recordCurrentMetrics(repo: RepoRecord): Promise<RepoMetric
   return await recordRepoMetricsSnapshot(repo)
 }
 
-export function getProjects(page = 1, limit = 12, offset?: number, tab = "velocity", range = "today") {
+export function getProjects(page = 1, limit = 12, offset?: number, tab = "velocity", range = "today", language?: string) {
   ensureBaselineSnapshots()
   const safePage = Math.max(page, 1)
   const safeLimit = Math.min(Math.max(limit, 1), 50)
   const store = readStore()
-  const repos = store.repos
+  let repos = store.repos
   const effectiveOffset = offset !== undefined
     ? Math.min(Math.max(offset, 0), repos.length)
     : (safePage - 1) * safeLimit
+
+  // Filter by language if specified
+  if (language) {
+    repos = repos.filter((repo) => repo.language === language)
+  }
 
   const allSnapshots = store.metrics_snapshots
 
