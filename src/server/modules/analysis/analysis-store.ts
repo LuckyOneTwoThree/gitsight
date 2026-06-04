@@ -1,4 +1,4 @@
-import { readStore, updateStore } from "@/src/server/lib/file-store"
+import { readStore, updateStore, loadReportContentByKey, invalidateStoreCache, saveReportContentToDb } from "@/src/server/lib/file-store"
 import {
   type AnalysisJobRecord,
   analysisSectionTypes,
@@ -42,14 +42,17 @@ export function listAnalysisReports(
   })
 }
 
+/** 按需加载报告完整内容（从 DB 单独查询，避免全量加载） */
 export function findAnalysisReport(
   repoId: number,
   sectionType: AnalysisSectionType,
   mode: AnalysisMode = "deep",
   language: AnalysisLanguage = "zh"
-) {
-  const report = findReportByContentKey(repoId, sectionType, mode, language)
-  if (!report) return null
+): AnalysisReportRecord | null {
+  const result = loadReportContentByKey(repoId, sectionType, mode, language)
+  if (!result) return null
+
+  const { report } = result
 
   if (report.prompt_version && report.prompt_version !== PROMPT_VERSION) {
     return { ...report, is_stale: true }
@@ -64,21 +67,21 @@ export function findReusableAnalysisReport(
   mode: AnalysisMode = "deep",
   language: AnalysisLanguage = "zh"
 ) {
-  const report = readStore().analysis_reports.find((item) => {
-    return item.repo_id === repoId &&
-      item.section_type === sectionType &&
-      item.mode === mode &&
-      item.language === language &&
-      item.status === "cached" &&
-      item.content &&
-      item.prompt_version === PROMPT_VERSION
-  }) || null
+  // 先查元数据确认状态
+  const meta = findReportByContentKey(repoId, sectionType, mode, language)
+  if (!meta || meta.status !== "cached" || !meta.prompt_version || meta.prompt_version !== PROMPT_VERSION) {
+    return null
+  }
 
-  return report
+  // 确认可用后再加载完整内容
+  const result = loadReportContentByKey(repoId, sectionType, mode, language)
+  if (!result || !result.content) return null
+
+  return result.report
 }
 
 export async function upsertAnalysisReport(report: AnalysisReportRecord) {
-  return await updateStore((store) => {
+  const result = await updateStore((store) => {
     const index = store.analysis_reports.findIndex((item) => {
       return item.repo_id === report.repo_id &&
         item.section_type === report.section_type &&
@@ -86,14 +89,27 @@ export async function upsertAnalysisReport(report: AnalysisReportRecord) {
         item.language === report.language
     })
 
+    // Store as meta (content excluded from cache, loaded on-demand via loadReportContentByKey)
+    const meta: typeof store.analysis_reports[number] = {
+      ...report,
+      content: null,
+    }
+
     if (index >= 0) {
-      store.analysis_reports[index] = report
+      store.analysis_reports[index] = meta
     } else {
-      store.analysis_reports.push(report)
+      store.analysis_reports.push(meta)
     }
 
     return report
   })
+
+  // Save content directly to DB (bypass cache)
+  if (report.content) {
+    saveReportContentToDb(report.id, report.content)
+  }
+
+  return result
 }
 
 export async function createGeneratingReport({
@@ -144,6 +160,7 @@ export async function markAnalysisReportFailed(
 
   return await upsertAnalysisReport({
     ...existing,
+    content: null,
     status: "failed",
     updated_at: new Date().toISOString(),
   })

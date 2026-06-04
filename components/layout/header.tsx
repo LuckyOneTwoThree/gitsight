@@ -37,6 +37,8 @@ interface HeaderProps {
   lastFetchedAt?: Date | null;
   languageFilter?: string;
   onLanguageFilterChange?: (value: string) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export function Header({
@@ -47,6 +49,8 @@ export function Header({
   lastFetchedAt,
   languageFilter,
   onLanguageFilterChange,
+  onRefresh,
+  isRefreshing,
 }: HeaderProps) {
   const { dict } = useApp();
   const d = dict.discover;
@@ -145,8 +149,8 @@ export function Header({
           </div>
 
           {/* Refresh Button */}
-          <Button variant="outline" size="icon" className="border-border bg-input h-8 w-8">
-            <RefreshCw className="h-3.5 w-3.5" />
+          <Button variant="outline" size="icon" className="border-border bg-input h-8 w-8" onClick={onRefresh} disabled={isRefreshing}>
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
           </Button>
 
           {/* Last Updated */}

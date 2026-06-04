@@ -18,7 +18,7 @@ const DAILY_INTERVAL = 4 * 60 * 60 * 1000
 const WEEKLY_INTERVAL = 12 * 60 * 60 * 1000
 const ALERT_INTERVAL = 30 * 60 * 1000
 const TOPIC_DISCOVERY_INTERVAL = 24 * 60 * 60 * 1000
-const INITIAL_DELAY = 60 * 1000
+const INITIAL_DELAY = 30 * 1000 // 30s — reduced from 60s
 
 // 按语言分类爬取 Trending，扩大项目覆盖面
 const TRENDING_LANGUAGES = [
@@ -76,6 +76,7 @@ export async function syncTrending(since: "daily" | "weekly" | "monthly") {
                 const fullData = await fetchGitHubRepo(owner, name)
                 await upsertRepo({
                   ...record,
+                  owner_avatar_url: fullData.owner_avatar_url || record.owner_avatar_url,
                   forks: fullData.forks,
                   open_issues_count: fullData.open_issues_count,
                   watchers: fullData.watchers,
@@ -158,6 +159,7 @@ function searchResultToRepoRecord(item: GitHubSearchResult): RepoRecord {
     full_name: item.full_name,
     name: item.name,
     owner: item.owner.login,
+    owner_avatar_url: item.owner.avatar_url || null,
     description: item.description,
     language: item.language,
     stars: item.stargazers_count,
@@ -192,11 +194,29 @@ async function postSyncMetrics() {
   try {
     const { readStore } = await import("@/src/server/lib/file-store")
     const store = readStore()
-    for (const repo of store.repos) {
+    // Batch: only record snapshots for repos that haven't been snapshotted recently
+    const now = Date.now()
+    const FOUR_HOURS = 4 * 60 * 60 * 1000
+    const recentSnapshots = new Map<number, string>()
+    for (const s of store.metrics_snapshots) {
+      const existing = recentSnapshots.get(s.repo_id)
+      if (!existing || s.captured_at > existing) {
+        recentSnapshots.set(s.repo_id, s.captured_at)
+      }
+    }
+
+    const reposToSnapshot = store.repos.filter((repo) => {
+      const lastSnapshot = recentSnapshots.get(repo.id)
+      if (!lastSnapshot) return true
+      return (now - Date.parse(lastSnapshot)) > FOUR_HOURS
+    })
+
+    for (const repo of reposToSnapshot) {
       await recordRepoMetricsSnapshot(repo)
     }
+
     const velocityCount = await recalculateAllVelocity()
-    console.log(`[Scheduler] Snapshots recorded, velocity recalculated for ${velocityCount} repos`)
+    console.log(`[Scheduler] Snapshots recorded for ${reposToSnapshot.length}/${store.repos.length} repos, velocity recalculated for ${velocityCount}`)
   } catch (err) {
     console.error("[Scheduler] Post-sync metrics update failed:", err)
   }
@@ -225,31 +245,25 @@ export function startSyncScheduler() {
       console.log(`[Scheduler] Created baseline snapshots for ${baselineCount} repos`)
     }
 
-    // Trending 同步：daily + weekly + monthly
-    syncTrending("daily")
-    dailyTimer = setInterval(() => syncTrending("daily"), DAILY_INTERVAL)
-
+    // 启动时只做 weekly 同步（最轻量），其他按定时器执行
     syncTrending("weekly")
+    dailyTimer = setInterval(() => syncTrending("daily"), DAILY_INTERVAL)
     weeklyTimer = setInterval(() => syncTrending("weekly"), WEEKLY_INTERVAL)
 
-    // monthly 同步（低频，每天执行一次即可）
-    syncTrending("monthly")
-
-    // Topic 发现：通过 GitHub Search API 补充项目
-    syncTopicDiscovery()
-    topicDiscoveryTimer = setInterval(() => syncTopicDiscovery(), TOPIC_DISCOVERY_INTERVAL)
+    // Topic 发现：延迟到首次同步完成后再启动
+    setTimeout(() => {
+      syncTopicDiscovery()
+      topicDiscoveryTimer = setInterval(() => syncTopicDiscovery(), TOPIC_DISCOVERY_INTERVAL)
+    }, 60 * 1000)
 
     // 告警执行
     runAlerts()
     alertTimer = setInterval(() => runAlerts(), ALERT_INTERVAL)
 
-    const HOURLY_ALERT_INTERVAL = 60 * 60 * 1000
-    setInterval(() => runAlerts(), HOURLY_ALERT_INTERVAL)
-
-    console.log(`[Scheduler] Started: daily every ${DAILY_INTERVAL / 3600000}h, weekly every ${WEEKLY_INTERVAL / 3600000}h, monthly daily, topic discovery every ${TOPIC_DISCOVERY_INTERVAL / 3600000}h, alerts every ${ALERT_INTERVAL / 60000}m + hourly`)
+    console.log(`[Scheduler] Started: daily every ${DAILY_INTERVAL / 3600000}h, weekly every ${WEEKLY_INTERVAL / 3600000}h, topic discovery every ${TOPIC_DISCOVERY_INTERVAL / 3600000}h, alerts every ${ALERT_INTERVAL / 60000}m`)
   }, INITIAL_DELAY)
 
-  console.log(`[Scheduler] Will start first sync in ${INITIAL_DELAY / 1000}s (waiting for server ready)`)
+  console.log(`[Scheduler] Will start first sync in ${INITIAL_DELAY / 1000}s`)
 }
 
 export function stopSyncScheduler() {

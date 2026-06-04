@@ -30,6 +30,7 @@ export function getDb(): Database.Database {
   dbInstance.pragma("busy_timeout = 5000")
 
   initializeTables(dbInstance)
+  migrateSchema(dbInstance)
 
   return dbInstance
 }
@@ -42,6 +43,7 @@ function initializeTables(db: Database.Database) {
       full_name TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
       owner TEXT NOT NULL,
+      owner_avatar_url TEXT,
       description TEXT,
       language TEXT,
       stars INTEGER NOT NULL DEFAULT 0,
@@ -172,6 +174,36 @@ function initializeTables(db: Database.Database) {
 
     CREATE INDEX IF NOT EXISTS idx_watchlist_repo_id ON watchlist(repo_id);
   `)
+}
+
+function migrateSchema(db: Database.Database) {
+  // Add owner_avatar_url column to repos if it doesn't exist
+  const columns = db.prepare("PRAGMA table_info(repos)").all() as { name: string }[]
+  if (!columns.some((col) => col.name === "owner_avatar_url")) {
+    db.exec("ALTER TABLE repos ADD COLUMN owner_avatar_url TEXT")
+    console.log("[DB] Migrated: added owner_avatar_url column to repos")
+  }
+
+  // Fix reports that have status="cached" but content=NULL (data loss from old DELETE+INSERT writeAllToDb)
+  const orphaned = db.prepare(
+    "SELECT COUNT(*) as cnt FROM analysis_reports WHERE status = 'cached' AND content IS NULL"
+  ).get() as { cnt: number }
+  if (orphaned.cnt > 0) {
+    db.exec(
+      `UPDATE analysis_reports SET
+        status = 'not_generated',
+        mermaid_code = NULL,
+        content_hash = NULL,
+        is_stale = 0,
+        generated_by = NULL,
+        prompt_version = NULL,
+        token_cost = 0,
+        generated_at = NULL,
+        updated_at = '${new Date().toISOString()}'
+      WHERE status = 'cached' AND content IS NULL`
+    )
+    console.log(`[DB] Migrated: reset ${orphaned.cnt} orphaned cached reports (content was NULL) to not_generated`)
+  }
 }
 
 export function closeDb() {

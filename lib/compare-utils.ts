@@ -24,7 +24,7 @@ export function repoToComparisonProject(repo: ApiRepo): ComparisonProject {
     id: String(repo.id),
     name: repo.name,
     owner: repo.owner,
-    ownerAvatar: `https://github.com/${repo.owner}.png`,
+    ownerAvatar: repo.owner_avatar_url || `https://avatars.githubusercontent.com/${repo.owner}`,
     description: repo.description || "No description provided.",
     language,
     languageColor: languageColors[language] || "#6b7280",

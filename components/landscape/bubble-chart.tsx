@@ -76,6 +76,7 @@ function CustomTooltip({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <img
+            loading="lazy"
             src={project.ownerAvatar}
             alt={project.owner}
             className="h-5 w-5 rounded-full"

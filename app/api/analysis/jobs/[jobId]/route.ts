@@ -1,4 +1,5 @@
 import { errorResponse, jsonResponse } from "@/src/server/lib/http"
+import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { getAnalysisReportJob } from "@/src/server/modules/analysis/analysis-service"
 
 interface RouteContext {
@@ -7,8 +8,8 @@ interface RouteContext {
   }>
 }
 
-export async function GET(_request: Request, context: RouteContext) {
-  const { jobId } = await context.params
+export const GET = withErrorHandling(async (_request: Request, context?: unknown) => {
+  const { jobId } = await (context as RouteContext).params
   const job = await getAnalysisReportJob(jobId)
 
   if (!job) {
@@ -16,4 +17,4 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   return jsonResponse(job)
-}
+})

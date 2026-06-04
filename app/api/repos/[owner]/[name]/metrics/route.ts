@@ -1,4 +1,5 @@
 import { errorResponse, jsonResponse } from "@/src/server/lib/http"
+import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { GitHubRepositoryNotFoundError } from "@/src/server/modules/project/github-client"
 import {
   recordCurrentMetrics,
@@ -13,8 +14,8 @@ interface RouteContext {
   }>
 }
 
-export async function POST(_request: Request, context: RouteContext) {
-  const { owner, name } = await context.params
+export const POST = withErrorHandling(async (_request: Request, context?: unknown) => {
+  const { owner, name } = await (context as RouteContext).params
 
   try {
     const result = await resolveRepo(owner, name)
@@ -31,5 +32,5 @@ export async function POST(_request: Request, context: RouteContext) {
 
     return errorResponse("METRICS_ERROR", "Failed to record repository metrics", 502)
   }
-}
+})
 

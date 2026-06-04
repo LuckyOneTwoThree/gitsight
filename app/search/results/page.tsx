@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SearchResultCard, type SearchResultData } from "@/components/search/search-result-card";
 import { AISummaryBar } from "@/components/search/ai-summary-bar";
 import { SearchSidebar, type LandscapeEntry, type CompareRecommendation } from "@/components/search/search-sidebar";
@@ -45,6 +44,7 @@ interface SemanticResult {
     full_name: string;
     name: string;
     owner: string;
+    owner_avatar_url: string | null;
     description: string | null;
     language: string | null;
     stars: number;
@@ -75,7 +75,7 @@ function toSearchResultData(result: SemanticResult, justNowLabel: string): Searc
     id: String(repo.id),
     name: repo.name,
     owner: repo.owner,
-    ownerAvatar: `https://avatars.githubusercontent.com/${repo.owner}`,
+    ownerAvatar: repo.owner_avatar_url || `https://avatars.githubusercontent.com/${repo.owner}`,
     description: repo.description || "",
     language: repo.language || "",
     languageColor: LANGUAGE_COLORS[repo.language || ""] || "#8b949e",
@@ -322,7 +322,7 @@ function SearchResultsContent() {
         id: String(r.repo.id),
         name: r.repo.name,
         owner: r.repo.owner,
-        avatar: `https://avatars.githubusercontent.com/${r.repo.owner}`,
+        avatar: r.repo.owner_avatar_url || `https://avatars.githubusercontent.com/${r.repo.owner}`,
         matchScore: r.matchScore,
       })),
       reason: reasonParts.join("，"),
@@ -382,10 +382,8 @@ function SearchResultsContent() {
   } : undefined;
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-      <div className="main-content flex flex-1 flex-col h-screen overflow-hidden">
-        <header className="shrink-0 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="flex flex-1 flex-col h-screen overflow-hidden">
+      <header className="shrink-0 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-16 items-center justify-between px-4 md:px-6">
             <div className="flex items-center gap-4">
               <Link href="/search">
@@ -622,6 +620,5 @@ function SearchResultsContent() {
 
         <SemanticSearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
       </div>
-    </div>
   );
 }

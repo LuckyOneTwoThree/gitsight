@@ -102,9 +102,14 @@ export function getProjects(page = 1, limit = 12, offset?: number, tab = "veloci
     repos = repos.filter((repo) => repo.language === language)
   }
 
+  // Sort first (without computing scores for all repos)
+  const sorted = sortReposByTab(repos, tab, sort)
+  const sliced = sorted.slice(effectiveOffset, effectiveOffset + safeLimit)
+
+  // Only compute sparkline + scores for the current page
   const allSnapshots = store.metrics_snapshots
 
-  const reposWithSparkline = repos.map((repo) => {
+  const reposWithSparkline = sliced.map((repo) => {
     const snapshots = allSnapshots
       .filter((s) => s.repo_id === repo.id)
       .sort((a, b) => Date.parse(a.captured_at) - Date.parse(b.captured_at))
@@ -130,11 +135,8 @@ export function getProjects(page = 1, limit = 12, offset?: number, tab = "veloci
     }
   })
 
-  const sorted = sortReposByTab(reposWithScores, tab, sort)
-  const sliced = sorted.slice(effectiveOffset, effectiveOffset + safeLimit)
-
   return {
-    data: sliced,
+    data: reposWithScores,
     pagination: {
       page: offset !== undefined ? Math.floor(effectiveOffset / safeLimit) + 1 : safePage,
       limit: safeLimit,
@@ -347,6 +349,7 @@ function createFallbackRepo(owner: string, name: string, existing: RepoRecord | 
     full_name: fullName,
     name,
     owner,
+    owner_avatar_url: existing?.owner_avatar_url || null,
     description: existing?.description || "GitHub metadata is pending sync. Add GITHUB_TOKEN to avoid anonymous API rate limits.",
     language: existing?.language || null,
     stars: existing?.stars || 0,

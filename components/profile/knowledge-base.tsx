@@ -107,6 +107,7 @@ function ReportCard({
         {/* Repo Info */}
         <div className="flex items-center gap-2 mb-3">
           <img
+            loading="lazy"
             src={report.ownerAvatar}
             alt={report.repoOwner}
             className="h-4 w-4 rounded-full"
@@ -205,6 +206,7 @@ function ComparisonCard({
                 style={{ zIndex: comparison.projects.length - index }}
               >
                 <img
+                  loading="lazy"
                   src={project.ownerAvatar}
                   alt={project.name}
                   className="h-full w-full object-cover"

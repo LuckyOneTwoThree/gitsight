@@ -2048,7 +2048,7 @@ export function AnalysisContent({
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-2">
           <ReportModeSwitch reportMode={reportMode} onReportModeChange={onReportModeChange} />
-          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => onGenerate?.(section)}>
             <RefreshCw className="h-4 w-4" />
             <span className="text-xs">{t.regenerate}</span>
           </Button>

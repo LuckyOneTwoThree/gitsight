@@ -1,9 +1,8 @@
 import { errorResponse, jsonResponse } from "@/src/server/lib/http"
+import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { executeAllActiveRules } from "@/src/server/modules/alerts/alert-executor"
 
-export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
-
+export const POST = withErrorHandling(async () => {
   const result = await executeAllActiveRules()
 
   return jsonResponse({
@@ -13,9 +12,9 @@ export async function POST(request: Request) {
     totalSent: result.totalSent,
     errors: result.errors,
   })
-}
+})
 
-export async function GET() {
+export const GET = withErrorHandling(() => {
   return jsonResponse({
     endpoint: "/api/alerts/execute",
     method: "POST",
@@ -26,4 +25,4 @@ export async function GET() {
       githubActions: "See documentation for GitHub Actions workflow example",
     },
   })
-}
+})

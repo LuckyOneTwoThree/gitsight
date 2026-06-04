@@ -94,6 +94,7 @@ export function ProjectRanking({ projects }: ProjectRankingProps) {
                 </div>
 
                 <img
+                  loading="lazy"
                   src={project.ownerAvatar}
                   alt={project.owner}
                   className="h-5 w-5 shrink-0 rounded-full"

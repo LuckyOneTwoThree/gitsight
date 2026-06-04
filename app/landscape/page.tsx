@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useApp } from "@/components/app-provider";
 import { TrackSummaryCard } from "@/components/landscape/track-summary";
 import { BubbleChart } from "@/components/landscape/bubble-chart";
@@ -123,13 +122,8 @@ function LandscapeContent() {
   }, [selectedTrack, loadData]);
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-
-      <div
-        className="main-content flex flex-1 flex-col"
-      >
-        <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-auto min-h-16 items-center justify-between gap-2 px-4 md:px-6 py-2">
             <div className="flex items-center gap-2 md:gap-4 min-w-0 shrink-0">
               <div className="shrink-0">
@@ -231,7 +225,6 @@ function LandscapeContent() {
             </div>
           </aside>
         </main>
-      </div>
-    </div>
+    </>
   );
 }

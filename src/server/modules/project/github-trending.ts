@@ -98,6 +98,7 @@ export function trendingRepoToRepoRecord(trending: TrendingRepo, existingRepo: R
     full_name: trending.fullName,
     name: trending.name,
     owner: trending.owner,
+    owner_avatar_url: existingRepo?.owner_avatar_url || null,
     description: trending.description || existingRepo?.description || null,
     language: trending.language || existingRepo?.language || null,
     stars: trending.stars || existingRepo?.stars || 0,

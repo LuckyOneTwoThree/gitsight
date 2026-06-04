@@ -1,4 +1,5 @@
 import { jsonResponse, errorResponse } from "@/src/server/lib/http"
+import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { readConfig, writeConfig } from "@/src/server/lib/desktop-config"
 
 const INTEGRATIONS_KEY = "integrations"
@@ -60,49 +61,39 @@ function getIntegrationsFromConfig(config: Record<string, unknown>): Integration
   return DEFAULT_INTEGRATIONS
 }
 
-export async function GET() {
-  try {
-    const config = readConfig() as unknown as Record<string, unknown>
-    const integrations = getIntegrationsFromConfig(config)
-    return jsonResponse({ integrations })
-  } catch (error) {
-    console.error("[auth/integrations] GET error:", error)
-    return errorResponse("INTEGRATIONS_LOAD_FAILED", "Failed to load integrations", 500)
+export const GET = withErrorHandling(() => {
+  const config = readConfig() as unknown as Record<string, unknown>
+  const integrations = getIntegrationsFromConfig(config)
+  return jsonResponse({ integrations })
+})
+
+export const PUT = withErrorHandling(async (request: Request) => {
+  const body = (await request.json()) as Record<string, unknown>
+  const channelId = body.channel_id as string | undefined
+  const enabled = body.enabled as boolean | undefined
+  const channelConfig = body.config as Record<string, string> | undefined
+
+  if (!channelId) {
+    return errorResponse("MISSING_CHANNEL_ID", "channel_id is required", 400)
   }
-}
 
-export async function PUT(request: Request) {
-  try {
-    const body = (await request.json()) as Record<string, unknown>
-    const channelId = body.channel_id as string | undefined
-    const enabled = body.enabled as boolean | undefined
-    const channelConfig = body.config as Record<string, string> | undefined
+  const config = readConfig() as unknown as Record<string, unknown>
+  const currentIntegrations = getIntegrationsFromConfig(config)
 
-    if (!channelId) {
-      return errorResponse("MISSING_CHANNEL_ID", "channel_id is required", 400)
-    }
-
-    const config = readConfig() as unknown as Record<string, unknown>
-    const currentIntegrations = getIntegrationsFromConfig(config)
-
-    const updatedIntegrations = currentIntegrations.map((item) => {
-      if (item.id === channelId) {
-        return {
-          ...item,
-          ...(typeof enabled === "boolean" && { enabled }),
-          ...(channelConfig && { config: channelConfig }),
-          updated_at: new Date().toISOString(),
-        }
+  const updatedIntegrations = currentIntegrations.map((item) => {
+    if (item.id === channelId) {
+      return {
+        ...item,
+        ...(typeof enabled === "boolean" && { enabled }),
+        ...(channelConfig && { config: channelConfig }),
+        updated_at: new Date().toISOString(),
       }
-      return item
-    })
+    }
+    return item
+  })
 
-    config[INTEGRATIONS_KEY] = updatedIntegrations
-    writeConfig(config as any)
+  config[INTEGRATIONS_KEY] = updatedIntegrations
+  writeConfig(config as any)
 
-    return jsonResponse({ integrations: updatedIntegrations })
-  } catch (error) {
-    console.error("[auth/integrations] PUT error:", error)
-    return errorResponse("INTEGRATIONS_SAVE_FAILED", "Failed to save integrations", 500)
-  }
-}
+  return jsonResponse({ integrations: updatedIntegrations })
+})

@@ -4,6 +4,7 @@ export interface RepoRecord {
   full_name: string
   name: string
   owner: string
+  owner_avatar_url: string | null
   description: string | null
   language: string | null
   stars: number

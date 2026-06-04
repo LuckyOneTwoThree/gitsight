@@ -1,4 +1,5 @@
 import { errorResponse, jsonResponse } from "@/src/server/lib/http"
+import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { getComparisonMarkdownJob } from "@/src/server/modules/compare/compare-service"
 
 interface RouteContext {
@@ -7,8 +8,8 @@ interface RouteContext {
   }>
 }
 
-export async function GET(_request: Request, context: RouteContext) {
-  const { taskId } = await context.params
+export const GET = withErrorHandling(async (_request: Request, context?: unknown) => {
+  const { taskId } = await (context as RouteContext).params
   const job = getComparisonMarkdownJob(taskId)
 
   if (!job) {
@@ -16,4 +17,4 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   return jsonResponse(job)
-}
+})

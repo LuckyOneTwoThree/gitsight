@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Black rounded square background -->
+  <rect x="16" y="16" width="480" height="480" rx="108" fill="#18181b"/>
+
+  <!-- Magnifying glass lens -->
+  <circle cx="208" cy="208" r="128" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="22"/>
+
+  <!-- Magnifying glass handle -->
+  <line x1="298" y1="298" x2="416" y2="416" stroke="white" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- Git branch: main line -->
+  <line x1="172" y1="272" x2="172" y2="144" stroke="white" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Git branch: branch line -->
+  <path d="M172,208 C172,180 200,168 248,144" stroke="white" stroke-width="10" fill="none" stroke-linecap="round"/>
+
+  <!-- Commit dots -->
+  <circle cx="172" cy="272" r="9" fill="white"/>
+  <circle cx="172" cy="208" r="9" fill="white"/>
+  <circle cx="172" cy="144" r="9" fill="white"/>
+  <circle cx="248" cy="144" r="9" fill="white"/>
+</svg>

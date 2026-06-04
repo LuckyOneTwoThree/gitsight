@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
-import { AppSidebar } from "@/components/layout/app-sidebar"
 import { toast } from "sonner"
 import { RepoHeader } from "@/components/repo/repo-header"
 import { AnalysisSidebar } from "@/components/repo/analysis-sidebar"
@@ -11,9 +10,11 @@ import { ANALYSIS_SECTIONS } from "@/lib/analysis-sections"
 import type { AnalysisSection, RepoDetail } from "@/lib/analysis-sections"
 import {
   applyAnalysisStatuses,
+  backendToFrontendSection,
   frontendToBackendSection,
   toRepoDetail,
   type ApiAnalysisReport,
+  type ApiAnalysisStatus,
   type ApiRepo,
   type RepoAnalysisResponse,
 } from "@/lib/repo-api"
@@ -96,10 +97,41 @@ export default function RepoDetailPage() {
         if (analysisPayload) {
           const fastReports = analysisPayload.fast_reports || analysisPayload.reports
           const deepReports = analysisPayload.deep_reports || analysisPayload.reports
+          const fastSections = applyAnalysisStatuses(ANALYSIS_SECTIONS.map((s) => ({ ...s })), fastReports)
+          const deepSections = applyAnalysisStatuses(ANALYSIS_SECTIONS.map((s) => ({ ...s })), deepReports)
           setSectionsByMode({
-            fast: applyAnalysisStatuses(ANALYSIS_SECTIONS.map((s) => ({ ...s })), fastReports),
-            deep: applyAnalysisStatuses(ANALYSIS_SECTIONS.map((s) => ({ ...s })), deepReports),
+            fast: fastSections,
+            deep: deepSections,
           })
+          // Detect sections already generating on server (e.g. retry from history page)
+          // Add them to generatingSectionIds and initialize progress so the animation works
+          const generatingIds = new Set<string>()
+          const initProgress = (sections: AnalysisSection[]) => {
+            for (const s of sections) {
+              if (s.status === "generating") {
+                generatingIds.add(s.id)
+              }
+            }
+          }
+          initProgress(fastSections)
+          initProgress(deepSections)
+          if (generatingIds.size > 0) {
+            setGeneratingSectionIds(generatingIds)
+            generatingIdsRef.current = generatingIds
+            // Set initial progress for generating sections
+            setSectionsByMode((prev) => ({
+              fast: prev.fast.map((s) =>
+                s.status === "generating" && !s.progress
+                  ? { ...s, progress: 15, progressStage: t.generatingDeepReport }
+                  : s
+              ),
+              deep: prev.deep.map((s) =>
+                s.status === "generating" && !s.progress
+                  ? { ...s, progress: 15, progressStage: t.generatingDeepReport }
+                  : s
+              ),
+            }))
+          }
         } else {
           setSectionsByMode({
             fast: ANALYSIS_SECTIONS.map((s) => ({ ...s })),
@@ -143,6 +175,26 @@ export default function RepoDetailPage() {
             fast: applyAnalysisStatuses(prev.fast, fastReports, generatingIdsRef.current),
             deep: applyAnalysisStatuses(prev.deep, deepReports, generatingIdsRef.current),
           }))
+          // Check if any generating sections have completed
+          const completedIds: string[] = []
+          const checkCompleted = (reports: ApiAnalysisStatus[]) => {
+            for (const r of reports) {
+              const frontendId = backendToFrontendSection[r.section_type] || r.section_type
+              if (generatingIdsRef.current.has(frontendId) && r.status === "cached") {
+                completedIds.push(frontendId)
+              }
+            }
+          }
+          checkCompleted(fastReports)
+          checkCompleted(deepReports)
+          if (completedIds.length > 0) {
+            setGeneratingSectionIds((prev) => {
+              const next = new Set(prev)
+              for (const id of completedIds) next.delete(id)
+              generatingIdsRef.current = next
+              return next
+            })
+          }
         }
       } catch {
       }
@@ -151,9 +203,29 @@ export default function RepoDetailPage() {
     const timer = window.setInterval(refreshGeneratingStatuses, 2500)
     refreshGeneratingStatuses()
 
+    // Simulate progress for generating sections (handles retry-from-history scenario)
+    const progressTimer = window.setInterval(() => {
+      setSectionsByMode((prev) => {
+        const generatingIds = generatingIdsRef.current
+        if (generatingIds.size === 0) return prev
+        const hasGenerating = prev.fast.some((s) => generatingIds.has(s.id) && s.status === "generating")
+          || prev.deep.some((s) => generatingIds.has(s.id) && s.status === "generating")
+        if (!hasGenerating) return prev
+
+        const bump = (sections: AnalysisSection[]) =>
+          sections.map((s) =>
+            generatingIds.has(s.id) && s.status === "generating"
+              ? { ...s, progress: Math.min((s.progress || 15) + 5, 92) }
+              : s
+          )
+        return { fast: bump(prev.fast), deep: bump(prev.deep) }
+      })
+    }, 1200)
+
     return () => {
       cancelled = true
       window.clearInterval(timer)
+      window.clearInterval(progressTimer)
     }
   }, [repo, reportLang, reportMode, hasGeneratingSection])
 
@@ -431,15 +503,8 @@ export default function RepoDetailPage() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Fixed Sidebar - Collapsed by default on repo pages */}
-      <AppSidebar />
-
-      {/* Main Content Area - Adjust margin based on sidebar state */}
-      <div
-        className="main-content flex h-screen flex-1 flex-col overflow-hidden"
-      >
-        {/* Repo Header */}
+    <div className="flex h-screen flex-1 flex-col overflow-hidden">
+      {/* Repo Header */}
         <RepoHeader repo={repo} isLoading={shouldShowLoadingState} collapsed={headerCollapsed} onToggleCollapse={() => setHeaderCollapsed(!headerCollapsed)} isWatched={isWatched} onToggleWatch={handleToggleWatch} />
         {error && (
           <div className="shrink-0 border-b border-border bg-destructive/10 px-4 md:px-6 py-3 text-sm text-destructive flex items-center gap-3">
@@ -506,6 +571,5 @@ export default function RepoDetailPage() {
           )}
         </div>
       </div>
-    </div>
   )
 }

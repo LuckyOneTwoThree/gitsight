@@ -60,7 +60,7 @@ export function TrendingSidebar() {
             id: String(repo.id || ""),
             name: String(repo.name || ""),
             owner: String(repo.owner || ""),
-            ownerAvatar: `https://github.com/${repo.owner}.png`,
+            ownerAvatar: String(repo.owner_avatar_url || "") || `https://avatars.githubusercontent.com/${repo.owner}`,
             stars: Number(repo.stars || 0),
             starsToday: Number(repo.stars_today || 0),
             starsWeek: Number(repo.stars_week || 0),

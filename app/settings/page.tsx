@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useApp } from "@/components/app-provider";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,13 +83,8 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-
-      <div
-        className="main-content flex flex-1 flex-col"
-      >
-        <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-16 items-center px-6">
             <div>
               <h1 className="flex items-center gap-2 text-lg font-semibold text-foreground">
@@ -140,8 +134,7 @@ export default function SettingsPage() {
             {activeTab === "backup" && <BackupSettings />}
           </div>
         </main>
-      </div>
-    </div>
+    </>
   );
 }
 

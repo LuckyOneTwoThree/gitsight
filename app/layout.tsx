@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppProvider } from '@/components/app-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
+import { AppSidebar } from '@/components/layout/app-sidebar'
 import './globals.css'
 
 const geistSans = Geist({
@@ -32,7 +33,12 @@ export default function RootLayout({
         <TooltipProvider delayDuration={0}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <AppProvider>
-              {children}
+              <div className="flex min-h-screen bg-background">
+                <AppSidebar />
+                <div className="main-content flex flex-1 flex-col">
+                  {children}
+                </div>
+              </div>
               <Toaster richColors position="top-center" />
             </AppProvider>
           </ThemeProvider>

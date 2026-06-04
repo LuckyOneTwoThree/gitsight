@@ -277,7 +277,7 @@ export function getLandscapeData(trackKey: string): LandscapeData {
       id: String(repo.id),
       name: repo.name,
       owner: repo.owner,
-      ownerAvatar: `https://github.com/${repo.owner}.png`,
+      ownerAvatar: repo.owner_avatar_url || `https://avatars.githubusercontent.com/${repo.owner}`,
       description: repo.description || "",
       language: repo.language || "Unknown",
       stars: repo.stars,

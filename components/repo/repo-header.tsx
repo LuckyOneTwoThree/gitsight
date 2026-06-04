@@ -67,6 +67,7 @@ export function RepoHeader({ repo, isLoading, collapsed, onToggleCollapse, isWat
           </Button>
           <div className="relative h-8 w-8 rounded-md bg-muted flex items-center justify-center overflow-hidden border border-border shrink-0">
             <img
+              loading="lazy"
               src={repo.ownerAvatar}
               alt={repo.owner}
               className="h-full w-full object-cover"

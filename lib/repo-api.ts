@@ -25,6 +25,7 @@ export interface ApiRepo {
   full_name: string
   name: string
   owner: string
+  owner_avatar_url: string | null
   description: string | null
   language: string | null
   stars: number
@@ -114,7 +115,7 @@ export function toRepoDetail(repo: ApiRepo): RepoDetail {
     name: repo.name,
     fullName: repo.full_name,
     owner: repo.owner,
-    ownerAvatar: `https://github.com/${repo.owner}.png`,
+    ownerAvatar: repo.owner_avatar_url || `https://avatars.githubusercontent.com/${repo.owner}`,
     description: repo.description || "No description provided.",
     stars: repo.stars,
     forks: repo.forks,
@@ -143,12 +144,25 @@ export function applyAnalysisStatuses(
   )
 
   return sections.map((section) => {
+    const report = statusByFrontendId.get(section.id)
+    if (!report) return section
+
+    // If section is generating locally but server says it's done, transition to the new status
+    if (generatingIds?.has(section.id) && report.status !== "generating") {
+      return {
+        ...section,
+        status: report.status,
+        progress: report.status === "cached" ? undefined : section.progress,
+        progressStage: report.status === "cached" ? undefined : section.progressStage,
+        cachedAt: report.generated_at
+          ? new Date(report.generated_at).toLocaleString()
+          : section.cachedAt,
+      }
+    }
+
     if (generatingIds?.has(section.id)) {
       return section
     }
-
-    const report = statusByFrontendId.get(section.id)
-    if (!report) return section
 
     return {
       ...section,
@@ -176,7 +190,7 @@ export function repoToProjectData(repo: ApiRepo): ProjectData {
     id: String(repo.id),
     name: repo.name,
     owner: repo.owner,
-    ownerAvatar: `https://github.com/${repo.owner}.png`,
+    ownerAvatar: repo.owner_avatar_url || `https://avatars.githubusercontent.com/${repo.owner}`,
     description: repo.description || "",
     language: repo.language || "Unknown",
     languageColor: LANGUAGE_COLORS[repo.language || ""] || "#8b8b8b",

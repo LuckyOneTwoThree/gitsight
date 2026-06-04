@@ -1,6 +1,6 @@
 import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { errorResponse, jsonResponse } from "@/src/server/lib/http"
-import { readStore } from "@/src/server/lib/file-store"
+import { readStore, loadReportContent } from "@/src/server/lib/file-store"
 import { extractQualityBadge } from "@/lib/report-quality-utils"
 
 interface RouteContext {
@@ -18,15 +18,21 @@ export const GET = withErrorHandling(async (_request: Request, context?: unknown
   const store = readStore()
   const report = store.analysis_reports.find((r) => r.id === id)
 
-  if (!report || report.status !== "cached" || !report.content) {
+  if (!report || report.status !== "cached") {
     return errorResponse("NOT_FOUND", "Report not found or not yet generated", 404)
+  }
+
+  // Load content from DB on demand (not in cache)
+  const content = loadReportContent(id)
+  if (!content) {
+    return errorResponse("NOT_FOUND", "Report content not available", 404)
   }
 
   const repo = store.repos.find((r) => r.id === report.repo_id)
 
-  const quality = extractQualityBadge(report.content)
+  const quality = extractQualityBadge(content)
 
-  const { _meta, ...publicContent } = report.content as Record<string, unknown>
+  const { _meta, ...publicContent } = content as Record<string, unknown>
 
   return jsonResponse({
     repo: repo

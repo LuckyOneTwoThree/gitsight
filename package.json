@@ -1,11 +1,13 @@
 {
-  "name": "repointel",
+  "name": "gitsight",
   "version": "1.0.0",
   "private": true,
   "description": "GitSight - 开源项目情报与分析工具",
+  "author": "GitSight Contributors",
+  "license": "MIT",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "dev:desktop": "tsc -p electron/tsconfig.json && electron .",
     "build": "next build",
     "build:electron": "tsc -p electron/tsconfig.json",
@@ -13,6 +15,7 @@
     "pack:desktop": "electron-builder --dir",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "postinstall": "electron-builder install-app-deps",
     "rebuild": "electron-rebuild"
   },
@@ -86,23 +89,51 @@
     "typescript": "5.7.3"
   },
   "build": {
-    "appId": "com.repointel.desktop",
+    "appId": "com.gitsight.desktop",
     "productName": "GitSight",
-    "copyright": "Copyright © 2025 GitSight",
+    "copyright": "Copyright © 2025 GitSight Contributors",
+    "forceCodeSigning": false,
     "directories": {
       "output": "dist-electron-output",
       "buildResources": "electron/resources"
     },
     "files": [
       "dist-electron/**/*",
-      "!dist-electron-output"
+      "!dist-electron-output",
+      "!node_modules",
+      "!src",
+      "!app",
+      "!components",
+      "!lib",
+      "!scripts",
+      "!.next",
+      "!data",
+      "!public"
     ],
     "extraResources": [
       {
         "from": ".next/standalone",
         "to": "app",
         "filter": [
-          "**/*"
+          "**/*",
+          "!data/**",
+          "!.data/**",
+          "!node_modules/**"
+        ]
+      },
+      {
+        "from": ".next/standalone/node_modules",
+        "to": "app/node_modules",
+        "filter": [
+          "**/*",
+          "!@next/swc-*/**",
+          "!@img/sharp-*/**",
+          "!better-sqlite3/prebuilds/**",
+          "!esbuild/**",
+          "!typescript/**",
+          "!eslint/**",
+          "!@eslint/**",
+          "!prettier/**"
         ]
       },
       {
@@ -113,10 +144,26 @@
         ]
       },
       {
+        "from": "node_modules/better-sqlite3/build/Release",
+        "to": "app/node_modules/better-sqlite3/build/Release",
+        "filter": [
+          "**/*.node"
+        ]
+      },
+      {
         "from": "public",
         "to": "app/public",
         "filter": [
           "**/*"
+        ]
+      },
+      {
+        "from": "electron/resources",
+        "to": "icons",
+        "filter": [
+          "icon.ico",
+          "icon.png",
+          "icon.icns"
         ]
       }
     ],
@@ -129,7 +176,9 @@
           ]
         }
       ],
-      "icon": "electron/resources/icon.ico"
+      "icon": "electron/resources/icon.ico",
+      "artifactName": "GitSight-${version}-Setup.${ext}",
+      "signAndEditExecutable": false
     },
     "mac": {
       "target": [
@@ -141,7 +190,9 @@
           ]
         }
       ],
-      "icon": "electron/resources/icon.icns"
+      "icon": "electron/resources/icon.icns",
+      "artifactName": "GitSight-${version}-${arch}.${ext}",
+      "category": "public.app-category.developer-tools"
     },
     "linux": {
       "target": [
@@ -152,16 +203,28 @@
           ]
         }
       ],
-      "icon": "electron/resources/icon.png"
+      "icon": "electron/resources/icon.png",
+      "artifactName": "GitSight-${version}.${ext}",
+      "category": "Development"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "GitSight"
+      "shortcutName": "GitSight",
+      "artifactName": "GitSight-${version}-Setup.${ext}"
     },
     "asar": true,
-    "npmRebuild": true
+    "npmRebuild": false,
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "LuckyOneTwoThree",
+      "repo": "gitsight"
+    }
   }
 }

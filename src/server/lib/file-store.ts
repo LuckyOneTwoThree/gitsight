@@ -63,10 +63,15 @@ export interface AlertRuleRecord {
   updated_at: string
 }
 
+/** 轻量版报告元数据（不含 content 字段，用于列表/概览） */
+export type AnalysisReportMeta = Omit<AnalysisReportRecord, "content"> & {
+  content: null // 轻量版始终为 null
+}
+
 export interface AppStoreData {
   repos: RepoRecord[]
   metrics_snapshots: RepoMetricsSnapshot[]
-  analysis_reports: AnalysisReportRecord[]
+  analysis_reports: AnalysisReportMeta[]
   analysis_jobs: AnalysisJobRecord[]
   compare_jobs: CompareAnalysisJob[]
   alert_rules: AlertRuleRecord[]
@@ -85,7 +90,7 @@ const defaultStore: AppStoreData = {
   push_channels: [],
 }
 
-const CACHE_TTL_MS = 5 * 1000 // 5 秒缓存过期，确保同步数据可被 API 读取
+const CACHE_TTL_MS = 30 * 1000 // 30 秒缓存过期
 
 let storeCache: AppStoreData | null = null
 let storeCacheTime = 0
@@ -99,6 +104,7 @@ function readReposFromDb(): RepoRecord[] {
     full_name: r.full_name as string,
     name: r.name as string,
     owner: r.owner as string,
+    owner_avatar_url: (r.owner_avatar_url as string) || null,
     description: (r.description as string) || null,
     language: (r.language as string) || null,
     stars: r.stars as number,
@@ -142,9 +148,12 @@ function readMetricsSnapshotsFromDb(): RepoMetricsSnapshot[] {
   }))
 }
 
-function readAnalysisReportsFromDb(): AnalysisReportRecord[] {
+/** 轻量加载：不含 content 字段（content 可能是几十 KB 的 JSON） */
+function readAnalysisReportsMetaFromDb(): AnalysisReportMeta[] {
   const db = getDb()
-  const rows = db.prepare("SELECT * FROM analysis_reports").all() as Record<string, unknown>[]
+  const rows = db.prepare(
+    "SELECT id, repo_id, section_type, mode, language, status, mermaid_code, content_hash, is_stale, generated_by, prompt_version, token_cost, generated_at, created_at, updated_at FROM analysis_reports"
+  ).all() as Record<string, unknown>[]
   return rows.map((r) => ({
     id: r.id as number,
     repo_id: r.repo_id as number,
@@ -152,7 +161,7 @@ function readAnalysisReportsFromDb(): AnalysisReportRecord[] {
     mode: r.mode as AnalysisReportRecord["mode"],
     language: r.language as AnalysisReportRecord["language"],
     status: r.status as AnalysisReportRecord["status"],
-    content: r.content ? JSON.parse(r.content as string) : null,
+    content: null as null,
     mermaid_code: (r.mermaid_code as string) || null,
     content_hash: (r.content_hash as string) || null,
     is_stale: !!r.is_stale,
@@ -237,7 +246,7 @@ function loadAllFromDb(): AppStoreData {
   return {
     repos: readReposFromDb(),
     metrics_snapshots: readMetricsSnapshotsFromDb(),
-    analysis_reports: readAnalysisReportsFromDb(),
+    analysis_reports: readAnalysisReportsMetaFromDb(),
     analysis_jobs: readAnalysisJobsFromDb(),
     compare_jobs: readCompareJobsFromDb(),
     alert_rules: readAlertRulesFromDb(),
@@ -250,22 +259,23 @@ function writeAllToDb(data: AppStoreData) {
   const write = db.transaction(() => {
     db.prepare("DELETE FROM repos").run()
     db.prepare("DELETE FROM metrics_snapshots").run()
-    db.prepare("DELETE FROM analysis_reports").run()
+    // NOTE: Do NOT DELETE analysis_reports — content is not in cache (lightweight meta).
+    // Instead, update existing rows and insert new ones, preserving DB content.
     db.prepare("DELETE FROM analysis_jobs").run()
     db.prepare("DELETE FROM compare_jobs").run()
     db.prepare("DELETE FROM alert_rules").run()
     db.prepare("DELETE FROM push_channels").run()
 
-    const insertRepo = db.prepare(`INSERT INTO repos (id, github_id, full_name, name, owner, description, language,
+    const insertRepo = db.prepare(`INSERT INTO repos (id, github_id, full_name, name, owner, owner_avatar_url, description, language,
       stars, forks, open_issues_count, watchers, license, topics, homepage,
       is_archived, is_fork, default_branch, contributors_count, source,
       analysis_count, last_analyzed_at, synced_at,
       stars_today, stars_week, stars_month, velocity_score, intel_score, intel_grade, trending_rank,
       last_metrics_sync, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     for (const r of data.repos) {
       insertRepo.run(
-        r.id, r.github_id, r.full_name, r.name, r.owner, r.description ?? null, r.language ?? null,
+        r.id, r.github_id, r.full_name, r.name, r.owner, r.owner_avatar_url ?? null, r.description ?? null, r.language ?? null,
         r.stars, r.forks, r.open_issues_count, r.watchers, r.license ?? null,
         JSON.stringify(r.topics ?? []), r.homepage ?? null,
         r.is_archived ? 1 : 0, r.is_fork ? 1 : 0, r.default_branch, r.contributors_count, r.source,
@@ -280,12 +290,23 @@ function writeAllToDb(data: AppStoreData) {
       insertMetrics.run(m.repo_id, m.stars, m.forks, m.open_issues_count, m.watchers, m.captured_at)
     }
 
-    const insertReport = db.prepare(`INSERT INTO analysis_reports (id, repo_id, section_type, mode, language,
+    // Upsert analysis_reports: preserve existing content in DB, update meta fields
+    const upsertReport = db.prepare(`INSERT INTO analysis_reports (id, repo_id, section_type, mode, language,
       status, content, mermaid_code, content_hash, is_stale,
       generated_by, prompt_version, token_cost, generated_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        mermaid_code = excluded.mermaid_code,
+        content_hash = excluded.content_hash,
+        is_stale = excluded.is_stale,
+        generated_by = excluded.generated_by,
+        prompt_version = excluded.prompt_version,
+        token_cost = excluded.token_cost,
+        generated_at = excluded.generated_at,
+        updated_at = excluded.updated_at`)
     for (const r of data.analysis_reports) {
-      insertReport.run(
+      upsertReport.run(
         r.id, r.repo_id, r.section_type, r.mode, r.language,
         r.status, r.content ? JSON.stringify(r.content) : null,
         r.mermaid_code ?? null, r.content_hash ?? null,
@@ -344,7 +365,9 @@ export function readStore(): AppStoreData {
   try {
     storeCache = loadAllFromDb()
     storeCacheTime = now
-    maybeTriggerTrendingSync(storeCache)
+    // NOTE: removed maybeTriggerTrendingSync from here — it was causing
+    // full trending syncs on every cache expiry, blocking API responses.
+    // Sync is handled by the scheduler in instrumentation.ts instead.
     return storeCache
   } catch (error) {
     console.error("[DataStore] Failed to read from SQLite:", error)
@@ -352,30 +375,10 @@ export function readStore(): AppStoreData {
   }
 }
 
-let trendingSyncInFlight = false
-
-async function maybeTriggerTrendingSync(store: AppStoreData) {
-  if (trendingSyncInFlight) return
-  if (store.repos.length > 0) {
-    const lastSync = store.repos[0]?.synced_at || store.repos[0]?.updated_at
-    if (lastSync) {
-      const hoursSinceSync = (Date.now() - Date.parse(lastSync)) / (1000 * 60 * 60)
-      if (hoursSinceSync < 4) return
-    }
-  }
-  trendingSyncInFlight = true
-  console.log("[DataStore] Triggering trending sync (repos empty or stale)...")
-  try {
-    const { syncTrending, syncTopicDiscovery } = await import("@/src/server/lib/sync-scheduler")
-    const weeklyResult = await syncTrending("weekly")
-    console.log("[DataStore] Weekly trending sync result:", JSON.stringify(weeklyResult))
-    const topicResult = await syncTopicDiscovery()
-    console.log("[DataStore] Topic discovery result:", JSON.stringify(topicResult))
-  } catch (err) {
-    console.error("[DataStore] Trending sync failed:", err)
-  } finally {
-    trendingSyncInFlight = false
-  }
+/** 强制使缓存失效（写入后调用，确保下次读取拿到最新数据） */
+export function invalidateStoreCache() {
+  storeCache = null
+  storeCacheTime = 0
 }
 
 export function writeStore(next: AppStoreData) {
@@ -389,7 +392,6 @@ export function writeStore(next: AppStoreData) {
 }
 
 export async function updateStore<T>(updater: (current: AppStoreData) => T): Promise<T> {
-  // 始终从 DB 重新加载，避免多进程/模块实例间缓存不一致导致全量覆盖
   const current = loadAllFromDb()
   storeCache = current
   storeCacheTime = Date.now()
@@ -404,7 +406,6 @@ function maybeCleanupStaleData(store: AppStoreData) {
   if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return
   lastCleanupAt = now
 
-  const isoNow = new Date().toISOString()
   const before = store.analysis_jobs.length
   store.analysis_jobs = store.analysis_jobs.filter(
     (j) => j.status === "pending" || j.status === "running" || new Date(j.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -416,3 +417,62 @@ function maybeCleanupStaleData(store: AppStoreData) {
 }
 
 let lastCleanupAt = 0
+
+// ── 按需加载报告内容（避免全量加载巨大的 content 字段） ──────────
+
+/** 从 DB 按需加载单份报告的完整内容 */
+export function loadReportContent(reportId: number): Record<string, unknown> | null {
+  const db = getDb()
+  const row = db.prepare("SELECT content FROM analysis_reports WHERE id = ?").get(reportId) as { content: string | null } | undefined
+  if (!row || !row.content) return null
+  try {
+    return JSON.parse(row.content)
+  } catch {
+    return null
+  }
+}
+
+/** 从 DB 按 repo+section+mode+language 加载报告完整内容 */
+export function loadReportContentByKey(
+  repoId: number,
+  sectionType: string,
+  mode: string,
+  language: string
+): { report: AnalysisReportRecord; content: Record<string, unknown> | null } | null {
+  const db = getDb()
+  const row = db.prepare(
+    "SELECT * FROM analysis_reports WHERE repo_id = ? AND section_type = ? AND mode = ? AND language = ?"
+  ).get(repoId, sectionType, mode, language) as Record<string, unknown> | undefined
+  if (!row) return null
+
+  const content = row.content ? JSON.parse(row.content as string) : null
+  const report: AnalysisReportRecord = {
+    id: row.id as number,
+    repo_id: row.repo_id as number,
+    section_type: row.section_type as AnalysisReportRecord["section_type"],
+    mode: row.mode as AnalysisReportRecord["mode"],
+    language: row.language as AnalysisReportRecord["language"],
+    status: row.status as AnalysisReportRecord["status"],
+    content,
+    mermaid_code: (row.mermaid_code as string) || null,
+    content_hash: (row.content_hash as string) || null,
+    is_stale: !!row.is_stale,
+    is_pro: false,
+    generated_by: (row.generated_by as string) || null,
+    prompt_version: (row.prompt_version as string) || null,
+    token_cost: row.token_cost as number,
+    generated_at: (row.generated_at as string) || null,
+    created_at: row.created_at as string,
+    updated_at: row.updated_at as string,
+  }
+  return { report, content }
+}
+
+/** 直接将报告 content 写入 DB（绕过缓存，用于 upsertAnalysisReport 保存完整内容） */
+export function saveReportContentToDb(reportId: number, content: Record<string, unknown> | null): void {
+  const db = getDb()
+  db.prepare("UPDATE analysis_reports SET content = ? WHERE id = ?").run(
+    content ? JSON.stringify(content) : null,
+    reportId
+  )
+}

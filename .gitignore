@@ -7,7 +7,8 @@ data/
 dist/
 build/
 dist-electron/
-dist-electron-output/
+dist-electron-output*/
+.cache/
 .DS_Store
 pnpm-lock.yaml
 tsconfig.tsbuildinfo

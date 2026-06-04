@@ -1,4 +1,5 @@
 import { jsonResponse, errorResponse } from "@/src/server/lib/http"
+import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { readStore } from "@/src/server/lib/file-store"
 import { trackDefinitions, matchTrack } from "@/src/server/modules/landscape/landscape-service"
 
@@ -27,43 +28,38 @@ const trackColors: Record<string, string> = {
 let exploreCache: { data: unknown; expiresAt: number } | null = null
 const EXPLORE_CACHE_TTL = 2 * 60 * 60 * 1000
 
-export async function GET() {
-  try {
-    const now = Date.now()
-    if (exploreCache && exploreCache.expiresAt > now) {
-      return jsonResponse(exploreCache.data)
-    }
-
-    const store = readStore()
-
-    const explorations = Object.entries(trackDefinitions).map(([key, track]) => {
-      const matchedRepos = store.repos.filter((repo) => matchTrack(repo, key))
-
-      const topRepos = [...matchedRepos]
-        .sort((a, b) => b.stars_week - a.stars_week)
-        .slice(0, 3)
-        .map((r) => r.name)
-
-      return {
-        id: key,
-        title: track.name,
-        description: track.description.slice(0, 40),
-        icon: trackIcons[key] || "sparkles",
-        color: trackColors[key] || "from-gray-500/20 to-gray-500/20",
-        projects: matchedRepos.length,
-        topRepos,
-        trackKey: key,
-      }
-    })
-
-    explorations.sort((a, b) => b.projects - a.projects)
-
-    const result = { data: explorations }
-    exploreCache = { data: result, expiresAt: now + EXPLORE_CACHE_TTL }
-
-    return jsonResponse(result)
-  } catch (error) {
-    console.error("[search/explore] Error:", error)
-    return errorResponse("FAILED", "Failed to get exploration suggestions", 500)
+export const GET = withErrorHandling(() => {
+  const now = Date.now()
+  if (exploreCache && exploreCache.expiresAt > now) {
+    return jsonResponse(exploreCache.data)
   }
-}
+
+  const store = readStore()
+
+  const explorations = Object.entries(trackDefinitions).map(([key, track]) => {
+    const matchedRepos = store.repos.filter((repo) => matchTrack(repo, key))
+
+    const topRepos = [...matchedRepos]
+      .sort((a, b) => b.stars_week - a.stars_week)
+      .slice(0, 3)
+      .map((r) => r.name)
+
+    return {
+      id: key,
+      title: track.name,
+      description: track.description.slice(0, 40),
+      icon: trackIcons[key] || "sparkles",
+      color: trackColors[key] || "from-gray-500/20 to-gray-500/20",
+      projects: matchedRepos.length,
+      topRepos,
+      trackKey: key,
+    }
+  })
+
+  explorations.sort((a, b) => b.projects - a.projects)
+
+  const result = { data: explorations }
+  exploreCache = { data: result, expiresAt: now + EXPLORE_CACHE_TTL }
+
+  return jsonResponse(result)
+})

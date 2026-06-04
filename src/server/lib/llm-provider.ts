@@ -163,7 +163,7 @@ export async function generateJsonWithLlm(options: GenerateJsonOptions) {
   }
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 180_000)
+  const timeoutId = setTimeout(() => controller.abort(), 300_000)
 
   let response: Response
   try {
@@ -185,7 +185,7 @@ export async function generateJsonWithLlm(options: GenerateJsonOptions) {
   } catch (error) {
     clearTimeout(timeoutId)
     if (error instanceof Error && error.name === "AbortError") {
-      throw new LlmGenerationError("LLM request timed out after 180 seconds")
+      throw new LlmGenerationError("LLM request timed out after 300 seconds")
     }
     throw error
   } finally {

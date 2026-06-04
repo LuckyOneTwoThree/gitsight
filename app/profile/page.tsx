@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { BarChart3, Download, FileText, GitCompare, Loader2, RotateCcw, Search, Trash2, Zap } from "lucide-react";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useApp } from "@/components/app-provider";
 import type { Dictionary } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -212,13 +211,8 @@ export default function ProfilePage() {
   const comparePager = usePagination(filteredCompareReports, compareSearch);
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-
-      <div
-        className="main-content flex flex-1 flex-col"
-      >
-        <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-16 items-center justify-between px-4 md:px-6">
             <div>
               <h1 className="flex items-center gap-2 text-lg font-semibold text-foreground">
@@ -505,8 +499,7 @@ export default function ProfilePage() {
             </TabsContent>
           </Tabs>
         </main>
-      </div>
-    </div>
+    </>
   );
 }
 

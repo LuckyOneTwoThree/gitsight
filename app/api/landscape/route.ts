@@ -1,7 +1,8 @@
 import { jsonResponse } from "@/src/server/lib/http"
+import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { getAvailableTracks, getLandscapeData } from "@/src/server/modules/landscape/landscape-service"
 
-export async function GET(request: Request) {
+export const GET = withErrorHandling((request: Request) => {
   const { searchParams } = new URL(request.url)
   const track = searchParams.get("track") || "llm-agent"
 
@@ -9,4 +10,4 @@ export async function GET(request: Request) {
   const tracks = getAvailableTracks()
 
   return jsonResponse({ ...data, availableTracks: tracks })
-}
+})

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useApp } from "@/components/app-provider";
 import { SemanticSearchPalette, SearchTrigger } from "@/components/search/semantic-search-palette";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -217,11 +216,8 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-
-      <main className="main-content flex-1">
-        <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-16 items-center justify-between px-4 md:px-6">
             <div>
               <h1 className="flex items-center gap-2 text-lg font-semibold text-foreground">
@@ -504,9 +500,8 @@ export default function SearchPage() {
             </div>
           </div>
         </div>
-      </main>
 
       <SemanticSearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
-    </div>
+    </>
   );
 }

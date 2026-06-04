@@ -1,4 +1,5 @@
 import { errorResponse, jsonResponse } from "@/src/server/lib/http"
+import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { deleteCompareReport } from "@/src/server/modules/user/workspace-service"
 
 interface RouteContext {
@@ -7,8 +8,8 @@ interface RouteContext {
   }>
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
-  const { id } = await context.params
+export const DELETE = withErrorHandling(async (_request: Request, context?: unknown) => {
+  const { id } = await (context as RouteContext).params
 
   const deleted = await deleteCompareReport(id)
   if (!deleted) {
@@ -16,4 +17,4 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   return jsonResponse({ ok: true })
-}
+})

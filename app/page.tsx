@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { ProjectGrid } from "@/components/projects/project-grid";
@@ -100,6 +99,28 @@ export default function HomePage() {
   const [languageFilter, setLanguageFilter] = useState("all");
   const [newlyTrending, setNewlyTrending] = useState<ProjectData[]>([]);
   const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = useCallback(() => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    toast.info(dict.dashboard.refreshWarning, { duration: 6000 });
+    // Fire-and-forget: sync runs on server regardless of client navigation
+    fetch("/api/sync", { method: "POST" })
+      .then((res) => {
+        if (res.ok) {
+          toast.success(dict.dashboard.refreshSuccess);
+          setRefreshKey((k) => k + 1);
+        } else {
+          toast.error(dict.dashboard.refreshFailed);
+        }
+      })
+      .catch(() => {
+        toast.error(dict.dashboard.refreshFailed);
+      })
+      .finally(() => setIsRefreshing(false));
+  }, [isRefreshing, dict]);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,7 +187,7 @@ export default function HomePage() {
 
     loadProjects();
     return () => { cancelled = true; };
-  }, [sortBy, languageFilter]);
+  }, [sortBy, languageFilter, refreshKey]);
 
   const handleLoadMore = useCallback(async () => {
     try {
@@ -216,13 +237,8 @@ export default function HomePage() {
   }, [watchedIds]);
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-
-      <div
-        className="main-content flex flex-1 flex-col"
-      >
-        <Header
+    <>
+      <Header
           sortBy={sortBy}
           onSortByChange={setSortBy}
           viewMode={viewMode}
@@ -230,6 +246,8 @@ export default function HomePage() {
           lastFetchedAt={lastFetchedAt}
           languageFilter={languageFilter}
           onLanguageFilterChange={setLanguageFilter}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
         />
 
         <main className="flex flex-1 gap-4 md:gap-6 p-4 md:p-6">
@@ -335,7 +353,6 @@ export default function HomePage() {
 
           <TrendingSidebar />
         </main>
-      </div>
-    </div>
+    </>
   );
 }

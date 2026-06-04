@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import type React from "react";
 import { CheckCircle2, Download, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { CompareHeader } from "@/components/compare/compare-header";
 import { ProjectSelector } from "@/components/compare/project-selector";
 import { ComparisonMatrix } from "@/components/compare/comparison-matrix";
@@ -321,13 +320,8 @@ export default function ComparePage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-
-      <div
-        className="main-content flex flex-1 flex-col"
-      >
-        <CompareHeader
+    <>
+      <CompareHeader
           projectCount={selectedProjects.length}
           isBusy={isGeneratingMarkdown}
           onExport={handleExport}
@@ -459,8 +453,7 @@ export default function ComparePage() {
             </div>
           )}
         </main>
-      </div>
-    </div>
+    </>
   );
 }
 

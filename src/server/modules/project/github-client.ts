@@ -7,6 +7,7 @@ interface GitHubRepositoryResponse {
   name: string
   owner: {
     login: string
+    avatar_url: string
   }
   description: string | null
   language: string | null
@@ -125,6 +126,7 @@ export async function fetchGitHubRepo(owner: string, name: string): Promise<Repo
     full_name: data.full_name,
     name: data.name,
     owner: data.owner.login,
+    owner_avatar_url: data.owner.avatar_url || null,
     description: data.description,
     language: data.language,
     stars: data.stargazers_count,

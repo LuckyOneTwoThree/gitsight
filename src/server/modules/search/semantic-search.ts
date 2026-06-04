@@ -407,6 +407,7 @@ function searchResultToRepoRecord(r: GitHubSearchResult, existing: RepoRecord | 
     full_name: r.full_name,
     name: r.name,
     owner: r.owner?.login || r.full_name.split("/")[0],
+    owner_avatar_url: r.owner?.avatar_url || existing?.owner_avatar_url || null,
     description: r.description || existing?.description || null,
     language: r.language || existing?.language || null,
     stars: r.stargazers_count || existing?.stars || 0,

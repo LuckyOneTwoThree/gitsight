@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { Sparkline } from "@/components/charts/sparkline";
 import { Card, CardContent } from "@/components/ui/card";
@@ -99,13 +98,8 @@ export default function DashboardPage() {
   const maxLangCount = data ? Math.max(...data.language_distribution.map((l) => l.count), 1) : 1;
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-
-      <div
-        className="main-content flex flex-1 flex-col"
-      >
-        <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-16 items-center px-6">
             <div>
               <h1 className="flex items-center gap-2 text-lg font-semibold text-foreground">
@@ -305,7 +299,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </main>
-      </div>
-    </div>
+    </>
   );
 }

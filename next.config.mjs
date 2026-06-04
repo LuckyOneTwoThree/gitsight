@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  serverExternalPackages: ["better-sqlite3", "bindings"],
   allowedDevOrigins: ["192.168.101.76"],
   images: {
     remotePatterns: [
@@ -27,7 +28,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' https://avatars.githubusercontent.com https://github.com https://raw.githubusercontent.com data: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.github.com https://api.openai.com https://api.deepseek.com https://api.moonshot.ai https://token-plan-cn.xiaomimimo.com https://openrouter.ai",
+              "connect-src 'self' https://*.github.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.deepseek.com https://dashscope.aliyuncs.com https://open.bigmodel.cn https://api.moonshot.ai https://api.mimo.ai https://ark.cn-beijing.volces.com https://api.baichuan-ai.com https://api.lingyiwanwu.com https://api.stepfun.com https://api.minimax.chat https://api.siliconflow.cn",
               "frame-ancestors 'none'",
             ].join("; "),
           },

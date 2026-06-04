@@ -1,10 +1,10 @@
 import { jsonResponse, errorResponse } from "@/src/server/lib/http"
+import { withErrorHandling } from "@/src/server/lib/with-error-handling"
 import { readStore } from "@/src/server/lib/file-store"
 import { computeVelocityForRepo } from "@/src/server/modules/project/velocity-service"
 import { trackDefinitions, matchTrack } from "@/src/server/modules/landscape/landscape-service"
 
-export async function GET() {
-  try {
+export const GET = withErrorHandling(() => {
     const store = readStore()
     const allSnapshots = store.metrics_snapshots
 
@@ -49,8 +49,4 @@ export async function GET() {
     })
 
     return jsonResponse({ data: trackTrending })
-  } catch (error) {
-    console.error("[search/trending] Error:", error)
-    return errorResponse("FAILED", "Failed to get trending searches", 500)
-  }
-}
+})

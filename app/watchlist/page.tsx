@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { ProjectGrid } from "@/components/projects/project-grid";
 import type { ProjectData } from "@/components/projects/project-card";
 import { repoToProjectData } from "@/lib/repo-api";
@@ -65,13 +64,8 @@ export default function WatchlistPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <AppSidebar />
-
-      <div
-        className="main-content flex flex-1 flex-col"
-      >
-        <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-16 items-center justify-between px-4 md:px-6">
             <div>
               <h1 className="flex items-center gap-2 text-lg font-semibold text-foreground">
@@ -117,7 +111,6 @@ export default function WatchlistPage() {
             />
           )}
         </main>
-      </div>
-    </div>
+    </>
   );
 }
