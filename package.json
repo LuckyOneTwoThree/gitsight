@@ -87,6 +87,8 @@
     "eslint-config-next": "^16.2.7",
     "geist": "^1.7.2",
     "globals": "^17.6.0",
+    "icns": "^0.1.0",
+    "png-to-ico": "^3.0.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
@@ -194,7 +196,7 @@
           ]
         }
       ],
-      "icon": "electron/resources/icon.icns",
+      "icon": "electron/resources/icon-mac.png",
       "artifactName": "GitSight-${version}-${arch}.${ext}",
       "category": "public.app-category.developer-tools"
     },
