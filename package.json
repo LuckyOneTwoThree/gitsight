@@ -82,7 +82,7 @@
     "@types/node": "^22",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "electron": "^42.3.1",
+    "electron": "^41.3.0",
     "electron-builder": "^26.8.1",
     "eslint-config-next": "^16.2.7",
     "geist": "^1.7.2",
