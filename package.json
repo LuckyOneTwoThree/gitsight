@@ -16,7 +16,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "node -e \"try{require('child_process').execSync('electron-builder install-app-deps',{stdio:'ignore'})}catch(e){}\"",
     "rebuild": "electron-rebuild"
   },
   "dependencies": {
