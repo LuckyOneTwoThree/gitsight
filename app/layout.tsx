@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Geist } from "next/font/google"
+import localFont from "next/font/local"
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppProvider } from '@/components/app-provider'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -7,8 +7,8 @@ import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import './globals.css'
 
-const geistSans = Geist({
-  subsets: ["latin"],
+const geistSans = localFont({
+  src: "./fonts/geist-sans.woff2",
   variable: "--font-geist-sans",
 })
 
