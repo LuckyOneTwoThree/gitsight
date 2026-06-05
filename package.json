@@ -74,6 +74,7 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
+    "@eslint/eslintrc": "^3.3.5",
     "@next/swc-wasm-nodejs": "^16.2.4",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/better-sqlite3": "^7.6.13",
@@ -83,6 +84,8 @@
     "@types/react-dom": "19.2.3",
     "electron": "^42.3.1",
     "electron-builder": "^26.8.1",
+    "eslint-config-next": "^16.2.7",
+    "globals": "^17.6.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
