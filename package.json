@@ -169,7 +169,7 @@
         "filter": [
           "icon.ico",
           "icon.png",
-          "icon.icns"
+          "icon-mac.png"
         ]
       }
     ],
@@ -182,9 +182,8 @@
           ]
         }
       ],
-      "icon": "electron/resources/icon.ico",
-      "artifactName": "GitSight-${version}-Setup.${ext}",
-      "signAndEditExecutable": false
+      "icon": "icon.ico",
+      "artifactName": "GitSight-${version}-Setup.${ext}"
     },
     "mac": {
       "target": [
@@ -196,7 +195,7 @@
           ]
         }
       ],
-      "icon": "electron/resources/icon-mac.png",
+      "icon": "icon-mac.png",
       "artifactName": "GitSight-${version}-${arch}.${ext}",
       "category": "public.app-category.developer-tools"
     },
@@ -209,7 +208,7 @@
           ]
         }
       ],
-      "icon": "electron/resources/icon.png",
+      "icon": "icon.png",
       "artifactName": "GitSight-${version}.${ext}",
       "category": "Development"
     },
