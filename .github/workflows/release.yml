@@ -10,6 +10,9 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   release:
     strategy:
@@ -45,9 +48,8 @@ jobs:
         env:
           npm_config_ignore_scripts: "true"
 
-      - name: Download better-sqlite3 prebuild
-        run: npx prebuild-install -d node_modules/better-sqlite3
-        continue-on-error: true
+      - name: Rebuild better-sqlite3 for Electron
+        run: npx @electron/rebuild -m node_modules/better-sqlite3
 
       - name: Build Next.js
         run: npm run build
