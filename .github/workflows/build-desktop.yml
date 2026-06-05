@@ -62,7 +62,7 @@ jobs:
         run: npm run build:electron
 
       - name: Build desktop package
-        run: npx electron-builder --${{ matrix.platform }}
+        run: npx electron-builder
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
