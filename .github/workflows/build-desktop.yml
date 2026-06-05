@@ -50,7 +50,7 @@ jobs:
           npm_config_ignore_scripts: "true"
 
       - name: Install better-sqlite3 prebuild for Electron
-        run: npx prebuild-install -d node_modules/better-sqlite3 --runtime=electron --target=41.3.0
+        run: cd node_modules/better-sqlite3 && npx prebuild-install --runtime=electron --target=41.3.0
         env:
           npm_config_runtime: electron
           npm_config_target: 41.3.0
