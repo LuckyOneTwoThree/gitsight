@@ -88,28 +88,17 @@ function startNextJsServer(port: number): Promise<void> {
         { env: { ...process.env, PORT: String(port) }, stdio: ["pipe", "pipe", "pipe"] }
       )
     } else {
-      // Prod: run the standalone server.js with Node.js
+      // Prod: run the standalone server.js using Electron's own Node.js runtime
+      // This avoids depending on system Node.js and ensures better-sqlite3
+      // native binary compatibility (compiled for Electron, not system Node).
       const serverPath = join(process.resourcesPath, "app", "server.js")
-      const nodePath = findNodePath()
-      console.log(`[GitSight] Starting server: ${nodePath} ${serverPath}`)
+      const electronPath = process.execPath
+      console.log(`[GitSight] Starting server: ${electronPath} ${serverPath}`)
 
-      // Verify Node.js is available
-      const { execSync } = require("child_process") as typeof import("child_process")
-      try {
-        execSync(`"${nodePath}" --version`, { stdio: "pipe" })
-      } catch {
-        dialog.showErrorBox(
-          "Node.js 未安装",
-          "GitSight 需要 Node.js 22 或更高版本来启动分析服务。\n\n请从 https://nodejs.org 下载并安装 Node.js (LTS 版本)，然后重新启动 GitSight。"
-        )
-        app.quit()
-        return
-      }
-
-      // Filter out Electron-specific env vars that may interfere with Next.js
-      const cleanEnv = { ...process.env } as Record<string, string>
-      delete cleanEnv.ELECTRON_RUN_AS_NODE
-      delete cleanEnv.ELECTRON_NO_ASAR
+      // ELECTRON_RUN_AS_NODE=1 makes Electron act as a standard Node.js runtime
+      const serverEnv = { ...process.env } as Record<string, string>
+      serverEnv.ELECTRON_RUN_AS_NODE = "1"
+      delete serverEnv.ELECTRON_NO_ASAR
 
       // Write a module alias script to fix Turbopack hashed module names
       // Turbopack renames "better-sqlite3" to "better-sqlite3-<hash>" which
@@ -175,9 +164,9 @@ Module._load = function (request, parent, isMain) {
       const { writeFileSync } = require("fs") as typeof import("fs")
       writeFileSync(aliasScriptPath, aliasScriptContent, "utf8")
 
-      serverProcess = spawn(nodePath, ["--require", aliasScriptPath, serverPath], {
+      serverProcess = spawn(electronPath, ["--require", aliasScriptPath, serverPath], {
         env: {
-          ...cleanEnv,
+          ...serverEnv,
           PORT: String(port),
           NODE_ENV: "production",
           HOSTNAME: "127.0.0.1",
@@ -234,32 +223,6 @@ Module._load = function (request, parent, isMain) {
       }
     }, 15000)
   })
-}
-
-/**
- * Find the Node.js executable to run the standalone server.
- *
- * Priority:
- * 1. Bundled Node.js via electron-builder extraResource (node/)
- * 2. System Node.js from PATH
- */
-function findNodePath(): string {
-  const isWin = process.platform === "win32"
-
-  // 1. Bundled Node.js (added via extraResource in electron-builder config)
-  const bundledNode = join(
-    process.resourcesPath,
-    "node",
-    isWin ? "node.exe" : "bin/node"
-  )
-  if (existsSync(bundledNode)) {
-    console.log(`[GitSight] Using bundled Node.js: ${bundledNode}`)
-    return bundledNode
-  }
-
-  // 2. System Node.js
-  console.log("[GitSight] Bundled Node.js not found, using system Node.js")
-  return isWin ? "node.exe" : "node"
 }
 
 /**

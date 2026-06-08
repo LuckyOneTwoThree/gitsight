@@ -43,8 +43,6 @@ Go to the [Releases](https://github.com/LuckyOneTwoThree/gitsight/releases) page
 | macOS | `GitSight-x.x.x-arm64.dmg` / `GitSight-x.x.x-x64.dmg` | Supports Intel and Apple Silicon |
 | Linux | `GitSight-x.x.x.AppImage` | Add execution permission after download |
 
-> Desktop version requires [Node.js >= 22](https://nodejs.org/) to be installed (for running the built-in analysis service).
-
 ### Web Version
 
 If you prefer to deploy the web version yourself, please refer to the [Local Development](#local-development) section below.
