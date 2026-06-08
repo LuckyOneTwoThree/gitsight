@@ -100,7 +100,7 @@ function startNextJsServer(port: number): Promise<void> {
       } catch {
         dialog.showErrorBox(
           "Node.js 未安装",
-          "GitSight 需要 Node.js 运行时来启动分析服务。\n\n请从 https://nodejs.org 下载并安装 Node.js (LTS 版本)，然后重新启动 GitSight。"
+          "GitSight 需要 Node.js 22 或更高版本来启动分析服务。\n\n请从 https://nodejs.org 下载并安装 Node.js (LTS 版本)，然后重新启动 GitSight。"
         )
         app.quit()
         return
