@@ -93,12 +93,12 @@ export function CompareHeader({
             <span className="hidden sm:inline">{dict.common.share}</span>
           </Button>
 
-          <Button variant="outline" size="icon" className="border-border bg-input" onClick={onRefresh} disabled={isBusy}>
+          <Button variant="outline" size="icon" className="border-border bg-input" onClick={onRefresh}>
             <RefreshCw className="h-4 w-4" />
           </Button>
 
           {projectCount > 0 && (
-            <Button variant="outline" className="gap-2 border-border bg-input hover:border-destructive/40 hover:text-destructive" onClick={onClearAll} disabled={isBusy}>
+            <Button variant="outline" className="gap-2 border-border bg-input hover:border-destructive/40 hover:text-destructive" onClick={onClearAll}>
               <Trash2 className="h-4 w-4" />
               <span className="hidden sm:inline">{t.clearAll}</span>
             </Button>

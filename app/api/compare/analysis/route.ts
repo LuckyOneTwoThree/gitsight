@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       baseUrl: active.base_url,
       model: active.model,
     }
-    const job = startComparisonMarkdownJob(repos, llmConfig)
+    const job = await startComparisonMarkdownJob(repos, llmConfig)
     return jsonResponse(job)
   } catch (error) {
     return errorResponse(

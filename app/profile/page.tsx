@@ -319,8 +319,14 @@ export default function ProfilePage() {
                                   <Link href={`/repo/${task.repo_owner}/${task.repo_name}`}>{t.open}</Link>
                                 </Button>
                               ) : (
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link href="/compare">{t.open}</Link>
+                                <Button variant="outline" size="sm" onClick={() => {
+                                  if (task.type === "compare") {
+                                    const names = task.repos.map((r: { owner: string; name: string }) => `${r.owner}/${r.name}`);
+                                    sessionStorage.setItem("repo-intel:compare-pending", JSON.stringify(names));
+                                  }
+                                  window.location.href = "/compare";
+                                }}>
+                                  {t.open}
                                 </Button>
                               )}
                             </div>
@@ -479,8 +485,12 @@ export default function ProfilePage() {
                                   {t.download}
                                 </Button>
                               )}
-                              <Button variant="outline" size="sm" asChild>
-                                <Link href="/compare">{t.continueCompare}</Link>
+                              <Button variant="outline" size="sm" onClick={() => {
+                                const names = report.repos.map((r: { owner: string; name: string }) => `${r.owner}/${r.name}`);
+                                sessionStorage.setItem("repo-intel:compare-pending", JSON.stringify(names));
+                                window.location.href = "/compare";
+                              }}>
+                                {t.continueCompare}
                               </Button>
                               <Button variant="ghost" size="icon" onClick={() => void deleteCompareReport(report.id)}>
                                 <Trash2 className="h-4 w-4 text-muted-foreground" />

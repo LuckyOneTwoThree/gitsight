@@ -141,11 +141,14 @@ export default function ComparePage() {
     let timer: number | undefined;
     let attempts = 0;
     const maxAttempts = 80;
+    const pollController = new AbortController();
 
     async function pollTask() {
       attempts += 1;
       try {
-        const response = await fetch(`/api/compare/analysis/${analysisTaskId}`);
+        const response = await fetch(`/api/compare/analysis/${analysisTaskId}`, {
+          signal: pollController.signal,
+        });
         const payload = (await response.json().catch(() => null)) as CompareAnalysisJob | null;
 
         if (!response.ok || !payload) {
@@ -178,6 +181,8 @@ export default function ComparePage() {
         }
       } catch (error) {
         if (cancelled) return;
+        // Ignore abort errors - caused by cleanup (e.g. user changed selection)
+        if (error instanceof DOMException && error.name === "AbortError") return;
         if (attempts < maxAttempts) {
           timer = window.setTimeout(pollTask, 3000);
         } else {
@@ -192,6 +197,7 @@ export default function ComparePage() {
 
     return () => {
       cancelled = true;
+      pollController.abort();
       if (timer) window.clearTimeout(timer);
     };
   }, [analysisTaskId, analysisStatus]);
@@ -202,21 +208,22 @@ export default function ComparePage() {
   }));
 
   const resetReportForSelectionChange = () => {
-    if (isGeneratingMarkdown) return;
+    abortRef?.abort();
     setMarkdownReport("");
     setMarkdownProvider(null);
     setAnalysisStatus(null);
     setAnalysisError(null);
+    setAnalysisTaskId(null);
+    setIsSubmitting(false);
+    window.sessionStorage.removeItem(compareTaskStorageKey);
   };
 
   const handleRemoveProject = (projectId: string) => {
-    if (isGeneratingMarkdown) return;
     setSelectedProjects((prev) => prev.filter((project) => project.id !== projectId));
     resetReportForSelectionChange();
   };
 
   const handleAddProject = (project: ComparisonProject) => {
-    if (isGeneratingMarkdown) return;
     setSelectedProjects((prev) => {
       if (prev.some((item) => item.id === project.id) || prev.length >= 6) return prev;
       return [...prev, project];
@@ -229,11 +236,12 @@ export default function ComparePage() {
   };
 
   const [abortRef, setAbortRef] = useState<AbortController | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleGenerateMarkdown = async () => {
-    if (selectedProjects.length < 2 || isGeneratingMarkdown) return;
+    if (selectedProjects.length < 2 || isGeneratingMarkdown || isSubmitting) return;
 
-    abortRef?.abort();
+    setIsSubmitting(true);
     const controller = new AbortController();
     setAbortRef(controller);
 
@@ -250,12 +258,15 @@ export default function ComparePage() {
 
       if (response.status === 401) {
         toast.error(t.requestFailedCheckConfig);
+        setAnalysisStatus(null);
+        setIsSubmitting(false);
         return;
       }
 
       if (response.status === 403) {
         toast.error(t.requestDeniedCheckConfig);
         setAnalysisStatus(null);
+        setIsSubmitting(false);
         return;
       }
 
@@ -268,9 +279,15 @@ export default function ComparePage() {
       setAnalysisStatus(payload.status);
       window.sessionStorage.setItem(compareTaskStorageKey, payload.id);
     } catch (error) {
+      // Ignore abort errors - caused by user cancelling (e.g. changing project selection)
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
       setAnalysisStatus("failed");
       setAnalysisError(error instanceof Error ? error.message : t.generationFailed);
       window.sessionStorage.removeItem(compareTaskStorageKey);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -304,18 +321,18 @@ export default function ComparePage() {
   };
 
   const handleRefresh = () => {
-    if (isGeneratingMarkdown) return;
     window.location.reload();
   };
 
   const handleClearAll = () => {
-    if (isGeneratingMarkdown) return;
+    abortRef?.abort();
     setSelectedProjects([]);
     setMarkdownReport("");
     setMarkdownProvider(null);
     setAnalysisStatus(null);
     setAnalysisError(null);
     setAnalysisTaskId(null);
+    setIsSubmitting(false);
     window.sessionStorage.removeItem(compareTaskStorageKey);
   };
 
@@ -344,7 +361,6 @@ export default function ComparePage() {
             onRemoveProject={handleRemoveProject}
             onAddProject={handleAddProject}
             maxProjects={6}
-            disabled={isGeneratingMarkdown}
           />
 
           {projectError && (
@@ -405,10 +421,10 @@ export default function ComparePage() {
                     <Button
                       size="sm"
                       className="gap-2"
-                      disabled={isGeneratingMarkdown}
+                      disabled={isGeneratingMarkdown || isSubmitting}
                       onClick={handleGenerateMarkdown}
                     >
-                      {isGeneratingMarkdown ? (
+                      {(isGeneratingMarkdown || isSubmitting) ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <FileText className="h-4 w-4" />
